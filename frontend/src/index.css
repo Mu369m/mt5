@@ -1,0 +1,104 @@
+/**
+ * @file frontend/src/index.css
+ * @description Global stylesheets and CSS design variables.
+ * Injects Tailwind layers and defines cyber-institutional glow highlights, glassmorphic styling,
+ * custom scrollbars, and dynamic theme tokens.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* Cyber accents system */
+  --color-accent-cyan: var(--accent-cyan, #00F0FF);
+  --color-accent-green: var(--accent-green, #00E676);
+  --color-accent-red: var(--accent-red, #FF1744);
+  --color-accent-gold: var(--accent-gold, #FFD600);
+  
+  /* Background layers */
+  --color-bg-void: var(--bg-void, #0B0E14);
+  --color-bg-card: var(--bg-card, #121721);
+  --color-bg-overlay: var(--bg-overlay, #1A2130);
+
+  /* Fonts overrides */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Border radius settings */
+  --radius-custom: var(--border-radius, 8px);
+}
+
+:root {
+  /* Setup base CSS variables mapping to site customizer variables */
+  --accent-cyan: #00F0FF;
+  --accent-green: #00E676;
+  --accent-red: #FF1744;
+  --accent-gold: #FFD600;
+  --bg-void: #0B0E14;
+  --bg-card: #121721;
+  --bg-overlay: #1A2130;
+  --border-radius: 8px;
+  --glass-opacity: 0.8;
+}
+
+/* Glassmorphism custom components */
+.glass-panel {
+  background: rgba(18, 23, 33, var(--glass-opacity));
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-input {
+  background: rgba(11, 14, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius);
+  color: #F8FAFC;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0E14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* Pulse glow indicator animations */
+@keyframes cyber-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: cyber-pulse 2s infinite ease-in-out;
+}

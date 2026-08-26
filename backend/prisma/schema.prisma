@@ -1,0 +1,203 @@
+// Prisma schema file for multi-tenant MT5 Trade Router and Admin Panel.
+// Connected Modules:
+// - backend/src/server.ts (prisma client initialization)
+// - shared/types.ts (TypeScript representations)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id                      String   @id @default(uuid()) @db.Uuid
+  companyName             String   @map("company_name") @db.VarChar(255)
+  email                   String   @unique @db.VarChar(255)
+  licenseKey              String   @unique @map("license_key") @db.VarChar(100)
+  status                  TenantStatus @default(ACTIVE)
+  maxDestinations         Int      @default(5) @map("max_destinations")
+  monthlyVolumeLimitLots Decimal  @default(10000.00) @map("monthly_volume_limit_lots") @db.Decimal(12, 2)
+  licenseExpiresAt        DateTime @map("license_expires_at") @db.Timestamptz
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  users             User[]
+  lpDestinations    LpDestination[]
+  routingRules      RoutingRule[]
+  symbolMappings    SymbolMapping[]
+  executionPolicies ExecutionPolicy[]
+  auditLogs         AuditLog[]
+
+  @@index([licenseKey, status], name: "idx_tenants_license_status")
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole @default(TENANT_ADMIN)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], name: "idx_users_tenant")
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  TENANT_VIEWER
+}
+
+model LpDestination {
+  id                String      @id @default(uuid()) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  brokerName        String      @map("broker_name") @db.VarChar(100)
+  accountLabel      String      @map("account_label") @db.VarChar(100)
+  serverIp          String      @map("server_ip") @db.VarChar(100)
+  port              Int
+  loginId           String      @map("login_id") @db.VarChar(100)
+  encryptedPassword String      @map("encrypted_password") @db.Text
+  accountMode       AccountMode @default(HEDGING) @map("account_mode")
+  enableForwarding  Boolean     @default(true) @map("enable_forwarding")
+  deviationPt       Int         @default(10) @map("deviation_pt")
+  magicId           Int         @default(999999) @map("magic_id")
+  lotsDivisor       Decimal     @default(1.0000) @map("lots_divisor") @db.Decimal(10, 4)
+  destDealerWaitMs  Int         @default(0) @map("dest_dealer_wait_ms")
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  routingRules   RoutingRule[]
+  symbolMappings SymbolMapping[]
+  auditLogs      AuditLog[]
+
+  @@index([tenantId, enableForwarding], name: "idx_destinations_tenant")
+  @@map("lp_destinations")
+}
+
+enum AccountMode {
+  HEDGING
+  NETTING
+}
+
+model RoutingRule {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  destinationId   String        @map("destination_id") @db.Uuid
+  ruleName        String        @map("rule_name") @db.VarChar(100)
+  sourceMt5Group  String        @map("source_mt5_group") @db.VarChar(150)
+  executionMode   ExecutionMode @default(COPIER) @map("execution_mode")
+  priority        Int           @default(1)
+  isEnabled       Boolean       @default(true) @map("is_enabled")
+  minLot          Decimal       @default(0.01) @map("min_lot") @db.Decimal(10, 2)
+  maxLot          Decimal       @default(100.00) @map("max_lot") @db.Decimal(10, 2)
+  forceMt5Flags   Int           @default(0) @map("force_mt5_flags")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  destination LpDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, sourceMt5Group, isEnabled], name: "idx_routing_tenant_group")
+  @@map("routing_rules")
+}
+
+enum ExecutionMode {
+  COPIER
+  DEALER_ONLY
+}
+
+model SymbolMapping {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  destinationId      String   @map("destination_id") @db.Uuid
+  sourceSymbol       String   @map("source_symbol") @db.VarChar(50)
+  destinationSymbol  String   @map("destination_symbol") @db.VarChar(50)
+  markupPoints       Decimal  @default(0.00) @map("markup_points") @db.Decimal(10, 2)
+  commissionOverride Decimal  @default(0.00) @map("commission_override") @db.Decimal(10, 2)
+  swapBuyOverride    Decimal  @default(0.00) @map("swap_buy_override") @db.Decimal(10, 2)
+  swapSellOverride   Decimal  @default(0.00) @map("swap_sell_override") @db.Decimal(10, 2)
+  passSourceSpread   Boolean  @default(true) @map("pass_source_spread")
+  passFillPrice      Boolean  @default(false) @map("pass_fill_price")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  destination LpDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, destinationId, sourceSymbol], name: "unique_tenant_dest_symbol")
+  @@index([tenantId, sourceSymbol], name: "idx_symbol_mappings_lookup")
+  @@map("symbol_mappings")
+}
+
+model ExecutionPolicy {
+  id                     String   @id @default(uuid()) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  policyName             String   @map("policy_name") @db.VarChar(100)
+  addedLatencyOpenMs     Int      @default(0) @map("added_latency_open_ms")
+  addedLatencyCloseMs    Int      @default(0) @map("added_latency_close_ms")
+  requoteDelayMs         Int      @default(0) @map("requote_delay_ms")
+  maxDeviationPoints     Int      @default(20) @map("max_deviation_points")
+  goodPriceWindowPoints  Int      @default(5) @map("good_price_window_points")
+  badPriceWindowPoints   Int      @default(15) @map("bad_price_window_points")
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], name: "idx_execution_policies_tenant")
+  @@map("execution_policies")
+}
+
+model AuditLog {
+  id                 BigInt   @id @default(autoincrement())
+  tenantId           String?  @map("tenant_id") @db.Uuid
+  destinationId      String?  @map("destination_id") @db.Uuid
+  eventType          String   @map("event_type") @db.VarChar(50)
+  logLevel           LogLevel @default(INFO) @map("log_level")
+  sourceGroup        String?  @map("source_group") @db.VarChar(100)
+  symbol             String?  @db.VarChar(50)
+  volumeLots         Decimal? @map("volume_lots") @db.Decimal(10, 2)
+  executionLatencyMs Int?     @map("execution_latency_ms")
+  message            String   @db.Text
+  metadata           Json?    @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  destination LpDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt(sort: Desc)], name: "idx_audit_logs_tenant_time")
+  @@map("audit_logs")
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+model GlobalSiteSettings {
+  id             String   @id @default(uuid()) @db.Uuid
+  themeConfig    Json     @map("theme_config")
+  brandingConfig Json     @map("branding_config")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("global_site_settings")
+}

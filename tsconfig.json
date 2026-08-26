@@ -4,13 +4,16 @@
   "files": [],
   "references": [
     {
-      "path": "./lib/db"
+      "path": "./shared"
     },
     {
-      "path": "./lib/api-client-react"
+      "path": "./backend"
     },
     {
-      "path": "./lib/api-zod"
+      "path": "./mt-bridge"
+    },
+    {
+      "path": "./frontend"
     }
   ]
 }
