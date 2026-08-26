@@ -19,6 +19,9 @@ dotenv.config();
 
 import { authRouter } from './routes/auth';
 import { adminRouter } from './routes/admin';
+import { publicRouter } from './routes/public';
+import { tenantRouter } from './routes/tenant';
+import { bridgeRouter } from './routes/bridge';
 import { destinationsRouter } from './routes/destinations';
 import { rulesRouter } from './routes/rules';
 import { symbolsRouter } from './routes/symbols';
@@ -37,9 +40,12 @@ app.use(express.json());
 
 // 1. Unauthenticated route boundaries
 app.use('/api/auth', authRouter);
+app.use('/api/public', publicRouter);
 
 // 2. Authenticated route boundaries
 app.use('/api/admin', authenticateToken, adminRouter);
+app.use('/api/tenant', authenticateToken, tenantRouter);
+app.use('/api/bridge', authenticateToken, bridgeRouter);
 app.use('/api/destinations', authenticateToken, destinationsRouter);
 app.use('/api/rules', authenticateToken, rulesRouter);
 app.use('/api/symbols', authenticateToken, symbolsRouter);
@@ -54,8 +60,8 @@ app.get('/health', (req, res) => {
 // Create HTTP Server
 const server = http.createServer(app);
 
-// Initialize WebSocket Telemetry Server
-const wss = new WebSocketServer({ server });
+// Initialize WebSocket Telemetry Server on /ws path (matches Vite proxy)
+const wss = new WebSocketServer({ server, path: '/ws' });
 const connectedClients = new Set<WebSocket>();
 
 wss.on('connection', (ws: WebSocket) => {

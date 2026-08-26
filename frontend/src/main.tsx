@@ -37,6 +37,26 @@ const RouteGuard: React.FC<{ component: React.ComponentType; path: string }> = (
   );
 };
 
+const SuperAdminGuard: React.FC<{ component: React.ComponentType }> = ({ component: Component }) => {
+  const token = localStorage.getItem('brp_token');
+  const rawUser = localStorage.getItem('brp_user');
+  const user = rawUser ? JSON.parse(rawUser) : null;
+
+  if (!token) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user?.role !== 'SUPER_ADMIN') {
+    return <Redirect to="/" />;
+  }
+
+  return (
+    <Layout>
+      <Component />
+    </Layout>
+  );
+};
+
 const RootApp = () => {
   return (
     <ThemeProvider>
@@ -63,7 +83,7 @@ const RootApp = () => {
             <RouteGuard component={Policies} path="/policies" />
           </Route>
           <Route path="/super-admin">
-            <RouteGuard component={SuperAdmin} path="/super-admin" />
+            <SuperAdminGuard component={SuperAdmin} />
           </Route>
 
           {/* Catch-all fallback redirect */}

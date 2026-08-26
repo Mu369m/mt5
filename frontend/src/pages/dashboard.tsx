@@ -56,7 +56,7 @@ export const Dashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('brp_token');
       const [logsRes, destsRes] = await Promise.all([
-        fetch('/api/admin/audit-logs?limit=15', {
+        fetch('/api/tenant/audit-logs?limit=15', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/destinations', {

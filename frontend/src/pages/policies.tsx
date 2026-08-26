@@ -118,28 +118,33 @@ export const Policies: React.FC = () => {
 
   const handleToggleEmergencyKill = async () => {
     const nextState = !isSystemActive;
-    
-    // In production, this can invoke a system settings change call on the server.
-    // For our dashboard simulation, we manage the local gateway routing state:
-    setIsSystemActive(nextState);
-    
+
+    if (!confirm(nextState
+      ? 'Reactivate all order forwarding pipelines?'
+      : 'EMERGENCY SHUTDOWN: This will instantly freeze all LP forwarding. Continue?'
+    )) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem('brp_token');
-      // Record a critical event in audit logs representing emergency toggle
-      await fetch('/api/admin/broadcast', {
+      const res = await fetch('/api/policies/kill-switch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          bannerText: nextState 
-            ? 'Emergency Alert: Institutional order routing has been reactivated.' 
-            : 'CRITICAL ALERT: System Forwarding Suspended via Emergency Kill Switch!'
-        })
+        body: JSON.stringify({ active: nextState })
       });
+
+      if (res.ok) {
+        setIsSystemActive(nextState);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Kill-switch request failed');
+      }
     } catch (err) {
-      console.error('Failed logging emergency override event', err);
+      console.error('Failed toggling emergency kill-switch', err);
     }
   };
 

@@ -9,6 +9,7 @@
  */
 
 import { Router, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import prisma from '../db';
@@ -16,6 +17,7 @@ import os from 'os';
 import crypto from 'crypto';
 
 export const adminRouter = Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
 
 // Apply role restriction middleware globally to these endpoints
 adminRouter.use(requireRole(['SUPER_ADMIN']));
@@ -155,6 +157,102 @@ adminRouter.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Respon
     res.status(200).json({ message: 'Tenant permanently removed' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to purge tenant database entry' });
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/impersonate
+ * Issue a short-lived JWT to view/manage a tenant dashboard as Super Admin.
+ */
+adminRouter.post('/tenants/:id/impersonate', async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id },
+      include: { users: { where: { role: 'TENANT_ADMIN', isActive: true }, take: 1 } },
+    });
+
+    if (!tenant || !tenant.users[0]) {
+      res.status(404).json({ error: 'Tenant or tenant admin user not found' });
+      return;
+    }
+
+    const adminUser = tenant.users[0];
+    const token = jwt.sign(
+      {
+        id: adminUser.id,
+        email: adminUser.email,
+        role: 'TENANT_ADMIN',
+        tenantId: tenant.id,
+        impersonatedBy: req.user!.id,
+      },
+      JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    await prisma.auditLog.create({
+      data: {
+        tenantId: tenant.id,
+        eventType: 'IMPERSONATION',
+        logLevel: 'WARN',
+        message: `Super Admin impersonated tenant "${tenant.companyName}"`,
+        metadata: { superAdminId: req.user!.id },
+      },
+    });
+
+    res.status(200).json({
+      token,
+      user: {
+        id: adminUser.id,
+        email: adminUser.email,
+        role: 'TENANT_ADMIN',
+        tenantId: tenant.id,
+        companyName: tenant.companyName,
+        licenseKey: tenant.licenseKey,
+        impersonated: true,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to impersonate tenant' });
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/kill-switch
+ * Instantly suspend tenant license and disable all LP forwarding (<1ms flag update).
+ */
+adminRouter.post('/tenants/:id/kill-switch', async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { suspend = true } = req.body;
+
+  try {
+    const tenant = await prisma.tenant.update({
+      where: { id },
+      data: { status: suspend ? 'SUSPENDED' : 'ACTIVE' },
+    });
+
+    if (suspend) {
+      await prisma.lpDestination.updateMany({
+        where: { tenantId: id },
+        data: { enableForwarding: false },
+      });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        tenantId: id,
+        eventType: 'KILL_SWITCH',
+        logLevel: suspend ? 'CRITICAL' : 'INFO',
+        message: suspend
+          ? `Kill-switch activated: tenant "${tenant.companyName}" suspended and forwarding disabled`
+          : `Kill-switch released: tenant "${tenant.companyName}" reactivated`,
+      },
+    });
+
+    res.status(200).json({ tenant, killSwitchActive: suspend });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle kill-switch' });
   }
 });
 

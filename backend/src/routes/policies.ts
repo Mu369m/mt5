@@ -12,19 +12,21 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { validateLicense } from '../middleware/license';
+import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
 export const policiesRouter = Router();
 
 // Apply licensing checks and authentication
 policiesRouter.use(validateLicense);
+policiesRouter.use(requireTenantContext);
 
 /**
  * GET /api/policies
  * Fetch risk execution policies configured for this tenant.
  */
 policiesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
 
   try {
     const list = await prisma.executionPolicy.findMany({
@@ -42,7 +44,7 @@ policiesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  * Define a new execution slippage and artificial delay risk policy.
  */
 policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const {
     policyName,
     addedLatencyOpenMs,
@@ -103,7 +105,7 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
  * Modify details of an execution risk policy.
  */
 policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
   const {
     policyName,
@@ -168,7 +170,7 @@ policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authentica
  * Delete an execution policy configuration.
  */
 policiesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
 
   try {
@@ -197,5 +199,49 @@ policiesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: Authent
     res.status(200).json({ message: 'Execution policy deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete execution policy' });
+  }
+});
+
+/**
+ * POST /api/policies/kill-switch
+ * Emergency tenant kill-switch: disables all LP forwarding instantly.
+ */
+policiesRouter.post('/kill-switch', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const tenantId = getTenantId(req)!;
+  const { active } = req.body;
+
+  try {
+    const suspend = active === false;
+
+    if (suspend) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { status: 'SUSPENDED' },
+      });
+      await prisma.lpDestination.updateMany({
+        where: { tenantId },
+        data: { enableForwarding: false },
+      });
+    } else {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { status: 'ACTIVE' },
+      });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        tenantId,
+        eventType: 'KILL_SWITCH',
+        logLevel: suspend ? 'CRITICAL' : 'INFO',
+        message: suspend
+          ? 'Tenant emergency kill-switch activated — all order forwarding frozen'
+          : 'Tenant kill-switch released — routing re-enabled',
+      },
+    });
+
+    res.status(200).json({ killSwitchActive: suspend, message: suspend ? 'Routing frozen' : 'Routing active' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle emergency kill-switch' });
   }
 });

@@ -12,6 +12,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { validateLicense } from '../middleware/license';
+import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import { trackUsageVolume } from '../metering';
 import prisma from '../db';
 
@@ -22,13 +23,14 @@ export const sandboxRouter = Router();
 
 // Apply licensing checks and authentication to the sandbox
 sandboxRouter.use(validateLicense);
+sandboxRouter.use(requireTenantContext);
 
 /**
  * POST /api/sandbox/execute
  * Dispatch a manual sandbox test order and return latency diagnostics (in ms).
  */
 sandboxRouter.post('/execute', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { destinationId, symbol, orderType, lots, price } = req.body;
 
   if (!destinationId || !symbol || !orderType || !lots) {

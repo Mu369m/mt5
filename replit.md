@@ -1,45 +1,42 @@
-# [Project name]
+# BRP MT5 Trade Router SaaS
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Multi-tenant MT5/MT4 execution bridge, dealer rule processor, and institutional admin dashboard.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SUPER_ADMIN_KEY`
+2. `pnpm install`
+3. `pnpm db:push` — push Prisma schema to PostgreSQL
+4. `pnpm dev` — starts backend (port 5000) and frontend (port 3000) in parallel
+
+Individual services:
+- `pnpm dev:backend` — Express API + WebSocket telemetry on `/ws`
+- `pnpm dev:frontend` — Vite React dashboard (proxies `/api` and `/ws`)
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- pnpm workspaces, TypeScript 5.9
+- Frontend: React 19, Vite, Tailwind v4, Wouter, Framer Motion
+- Backend: Express 5, Prisma ORM, PostgreSQL, WebSocket
+- Bridge: `mt-bridge/` execution engine (routing, netting, news shield, smart LP)
+- Shared: `shared/types.ts`, `shared/math.ts`, `shared/constants.ts`
 
-## Where things live
+## Architecture
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- **shared/** — USD/USC math, lot divisor scaling, type contracts
+- **backend/** — REST API, JWT + license key auth, tenant licensing, metering
+- **mt-bridge/** — Order routing pipeline, markup injection, B-Book netting
+- **frontend/** — Cyber-dark admin UI with Super Admin CMS customizer
 
-## Architecture decisions
+## First-time setup
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+1. Register Super Admin: `POST /api/auth/register` with `superAdminCode` matching `SUPER_ADMIN_KEY`
+2. Or register a tenant at `/register` (auto-provisions license + 1-year expiry)
+3. Super Admin: issue licenses at `/super-admin`, customize theme, impersonate tenants
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Super Admin must use **Login as Tenant** before accessing tenant LP/rules pages
+- WebSocket telemetry connects to `ws://localhost:5000/ws` (proxied via Vite in dev)
+- Tenant API access: pass `x-api-key: <license_key>` header for programmatic bridge calls
 
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

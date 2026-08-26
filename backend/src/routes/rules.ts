@@ -12,19 +12,21 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { validateLicense } from '../middleware/license';
+import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
 export const rulesRouter = Router();
 
 // Apply licensing checks and authentication to all rule endpoints
 rulesRouter.use(validateLicense);
+rulesRouter.use(requireTenantContext);
 
 /**
  * GET /api/rules
  * Retrieve routing matrix rules configured for this tenant.
  */
 rulesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
 
   try {
     const list = await prisma.routingRule.findMany({
@@ -50,7 +52,7 @@ rulesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  * Insert a routing matrix definition.
  */
 rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const {
     destinationId,
     ruleName,
@@ -116,7 +118,7 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
  * Edit details of a routing matrix rule.
  */
 rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
   const {
     destinationId,
@@ -186,7 +188,7 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
  * Remove a routing matrix rule.
  */
 rulesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
 
   try {

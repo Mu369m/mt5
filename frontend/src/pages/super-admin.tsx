@@ -132,6 +132,44 @@ export const SuperAdmin: React.FC = () => {
     }
   };
 
+  const handleKillSwitch = async (id: string, suspend: boolean) => {
+    if (!confirm(suspend ? 'Activate kill-switch and freeze all tenant routing?' : 'Release kill-switch for this tenant?')) return;
+    try {
+      const token = localStorage.getItem('brp_token');
+      const res = await fetch(`/api/admin/tenants/${id}/kill-switch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ suspend })
+      });
+      if (res.ok) {
+        loadData();
+      }
+    } catch (err) {
+      console.error('Kill-switch error', err);
+    }
+  };
+
+  const handleImpersonateTenant = async (id: string) => {
+    try {
+      const token = localStorage.getItem('brp_token');
+      const res = await fetch(`/api/admin/tenants/${id}/impersonate`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('brp_token', data.token);
+        localStorage.setItem('brp_user', JSON.stringify(data.user));
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Impersonation error', err);
+    }
+  };
+
   const handleRevokeTenant = async (id: string) => {
     if (!confirm('Hard revoke subscription? All tenant configurations will be deleted cascades.')) return;
     try {
@@ -320,10 +358,24 @@ export const SuperAdmin: React.FC = () => {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => handleImpersonateTenant(t.id)}
+                            className="px-2 py-1 bg-accent-cyan/10 hover:bg-accent-cyan/20 rounded text-[10px] font-mono tracking-wide text-accent-cyan cursor-pointer"
+                            title="Login as tenant"
+                          >
+                            LOGIN AS
+                          </button>
+                          <button
                             onClick={() => handleToggleTenantStatus(t.id, t.status)}
                             className="px-2 py-1 bg-black/40 hover:bg-black/60 rounded text-[10px] font-mono tracking-wide text-slate-300 cursor-pointer"
                           >
                             {t.status === 'ACTIVE' ? 'SUSPEND' : 'REACTIVATE'}
+                          </button>
+                          <button
+                            onClick={() => handleKillSwitch(t.id, t.status === 'ACTIVE')}
+                            className="px-2 py-1 bg-accent-red/10 hover:bg-accent-red/20 rounded text-[10px] font-mono tracking-wide text-accent-red cursor-pointer"
+                            title="Instant kill-switch"
+                          >
+                            KILL
                           </button>
                           <button
                             onClick={() => handleRevokeTenant(t.id)}

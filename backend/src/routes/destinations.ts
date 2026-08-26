@@ -13,6 +13,7 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { validateLicense } from '../middleware/license';
+import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import { encrypt } from '../utils/crypto';
 import prisma from '../db';
 
@@ -20,13 +21,14 @@ export const destinationsRouter = Router();
 
 // Apply licensing and tenant role validations to all endpoints
 destinationsRouter.use(validateLicense);
+destinationsRouter.use(requireTenantContext);
 
 /**
  * GET /api/destinations
  * List all destinations configured for the authenticated tenant.
  */
 destinationsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
 
   try {
     const list = await prisma.lpDestination.findMany({
@@ -38,7 +40,7 @@ destinationsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => 
       const { encryptedPassword, ...rest } = d;
       return rest;
     });
-    res.status(200).json(sanized);
+    res.status(200).json(sanitized);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve destination profiles' });
   }
@@ -49,7 +51,7 @@ destinationsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => 
  * Add a new LP or MT5 target account.
  */
 destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const {
     brokerName,
     accountLabel,
@@ -132,7 +134,7 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
  * Modify broker destination values.
  */
 destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
   const {
     brokerName,
@@ -205,7 +207,7 @@ destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authen
  * Delete destination account. Cascades routing rules.
  */
 destinationsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
 
   try {
@@ -242,7 +244,7 @@ destinationsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: Aut
  * Simulates server connection roundtrip latency counter.
  */
 destinationsRouter.post('/:id/ping', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
 
   try {

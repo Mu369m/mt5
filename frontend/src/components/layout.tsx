@@ -56,40 +56,33 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       const token = localStorage.getItem('brp_token');
       if (!token) return;
 
-      // Fetch global logs to look for broadcasts
-      const logsRes = await fetch('/api/admin/audit-logs?limit=5', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (logsRes.ok) {
-        const logsData = await logsRes.json();
-        const broadcastLog = logsData.logs?.find((l: any) => l.eventType === 'SYSTEM_BROADCAST');
-        if (broadcastLog && broadcastLog.metadata?.broadcast) {
-          setAnnouncement(broadcastLog.metadata.broadcast);
+      // Tenant-scoped telemetry (skip for Super Admin unless impersonating)
+      const rawUser = localStorage.getItem('brp_user');
+      const parsedUser = rawUser ? JSON.parse(rawUser) : null;
+      if (parsedUser?.role === 'SUPER_ADMIN' && !parsedUser?.tenantId) {
+        return;
+      }
+
+      // Fetch broadcast banner and live volume quota
+      const [broadcastRes, meteringRes] = await Promise.all([
+        fetch('/api/tenant/broadcast', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/tenant/metering', { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+
+      if (broadcastRes.ok) {
+        const broadcastData = await broadcastRes.json();
+        if (broadcastData.text) {
+          setAnnouncement(broadcastData.text);
         }
       }
 
-      // Fetch user profile or destinations to estimate quota
-      if (user?.role !== 'SUPER_ADMIN') {
-        const tenantRes = await fetch('/api/admin/tenants', {
-          headers: { 'Authorization': `Bearer ${token}` }
+      if (meteringRes.ok) {
+        const metering = await meteringRes.json();
+        setQuota({
+          current: metering.current,
+          limit: metering.limit,
+          percent: metering.percent,
         });
-        if (tenantRes.ok) {
-          const tenants = await tenantRes.json();
-          const currentTenant = tenants.find((t: any) => t.email === user?.email || t.companyName === user?.companyName);
-          if (currentTenant) {
-            const limit = Number(currentTenant.monthlyVolumeLimitLots) || 10000;
-            // Fetch total lots aggregated (simulate mock current lot tracking)
-            const current = 1240.50; // Mock base consumption
-            setQuota({
-              current,
-              limit,
-              percent: Math.min(100, (current / limit) * 100)
-            });
-          }
-        } else {
-          // Default mock quotas
-          setQuota({ current: 480.20, limit: 1000.00, percent: 48.02 });
-        }
       }
     } catch (err) {
       console.warn('Layout telemetry load error', err);
@@ -225,6 +218,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {user.companyName}
                   </span>
                 </div>
+              )}
+            </div>
+
+            {/* Live telemetry strip */}
+            <div className="flex items-center gap-4 text-[10px] font-mono">
+              <span className="flex items-center gap-1.5 text-accent-green">
+                <span className="w-2 h-2 rounded-full bg-accent-green pulse-glow"></span>
+                SERVER ONLINE
+              </span>
+              {quota && (
+                <span className="text-slate-400">
+                  LP QUOTA: {quota.percent.toFixed(0)}% utilized
+                </span>
               )}
             </div>
 

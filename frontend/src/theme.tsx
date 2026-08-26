@@ -46,13 +46,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load custom configurations from backend API
   const loadBrandingAndTheme = async () => {
     try {
-      const token = localStorage.getItem('brp_token');
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch('/api/admin/settings', { headers });
+      const res = await fetch('/api/public/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.themeConfig) setTheme(data.themeConfig);

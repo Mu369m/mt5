@@ -10,6 +10,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../db';
 
 // Extend Express Request interface to include session metadata
 export interface AuthenticatedRequest extends Request {
@@ -26,15 +27,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-sig
 /**
  * Middleware that authenticates incoming requests using Bearer JWT or x-api-key.
  */
-export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+/**
+ * Authenticates requests via Bearer JWT or x-api-key (Super Admin key or tenant license key).
+ */
+export async function authenticateToken(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  const apiKey = req.headers['x-api-key'] as string;
+  const apiKey = req.headers['x-api-key'] as string | undefined;
 
-  // 1. Check API Key Authenticator first (for external gateway/LP connection requests)
+  // 1. API Key authentication (Super Admin override or tenant license key)
   if (apiKey) {
-    // In a production system, we lookup the active API keys for tenants in the database.
-    // For simplicity and ease of routing, we inspect if it's the Super Admin override key first:
     if (apiKey === process.env.SUPER_ADMIN_KEY) {
       req.user = {
         id: 'super-admin-api-user-uuid',
@@ -42,7 +48,29 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
         role: 'SUPER_ADMIN',
         tenantId: null,
       };
-      return next();
+      next();
+      return;
+    }
+
+    // Lookup tenant by license key for programmatic bridge access
+    try {
+      const tenant = await prisma.tenant.findFirst({
+        where: { licenseKey: apiKey, status: 'ACTIVE' },
+        include: { users: { where: { role: 'TENANT_ADMIN', isActive: true }, take: 1 } },
+      });
+
+      if (tenant && tenant.users[0]) {
+        req.user = {
+          id: tenant.users[0].id,
+          email: tenant.users[0].email,
+          role: 'TENANT_ADMIN',
+          tenantId: tenant.id,
+        };
+        next();
+        return;
+      }
+    } catch (error) {
+      console.error('[API_KEY_AUTH_ERROR]', error);
     }
   }
 

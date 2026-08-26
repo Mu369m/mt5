@@ -12,19 +12,21 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { validateLicense } from '../middleware/license';
+import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
 export const symbolsRouter = Router();
 
 // Apply licensing validation and authentication
 symbolsRouter.use(validateLicense);
+symbolsRouter.use(requireTenantContext);
 
 /**
  * GET /api/symbols
  * Fetch active symbol mappings for this tenant.
  */
 symbolsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
 
   try {
     const list = await prisma.symbolMapping.findMany({
@@ -50,7 +52,7 @@ symbolsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  * Define a new symbol mapping translating a symbol from source MT5 to destination LP.
  */
 symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const {
     destinationId,
     sourceSymbol,
@@ -128,7 +130,7 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
  * Modify spreads markup, swaps overrides, or flags.
  */
 symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
   const {
     destinationId,
@@ -198,7 +200,7 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
  * Purge symbol mapping configuration.
  */
 symbolsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const tenantId = req.user!.tenantId!;
+  const tenantId = getTenantId(req)!;
   const { id } = req.params;
 
   try {
