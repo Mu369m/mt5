@@ -249,6 +249,13 @@ model CopierProfile {
   enabled             Boolean           @default(false)
   maxSlippagePoints   Int               @default(20) @map("max_slippage_points")
   volumeMultiplier    Decimal           @default(1.0) @map("volume_multiplier") @db.Decimal(12, 6)
+  executionMode       ExecutionPipelineMode @default(SIMULATED) @map("execution_mode")
+  routingMode         RoutingMode       @default(HYBRID_AUTO) @map("routing_mode")
+  reverseTrading      Boolean           @default(false) @map("reverse_trading")
+  maxBBookExposureLots Decimal          @default(100) @map("max_bbook_exposure_lots") @db.Decimal(12, 6)
+  maxDailyLossPercent Decimal           @default(5) @map("max_daily_loss_percent") @db.Decimal(5, 2)
+  maxDrawdownPercent  Decimal           @default(10) @map("max_drawdown_percent") @db.Decimal(5, 2)
+  maxExecutionTtlMs   Int               @default(1000) @map("max_execution_ttl_ms")
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -258,6 +265,17 @@ model CopierProfile {
 
   @@index([tenantId, enabled], name: "idx_copier_profiles_tenant")
   @@map("copier_profiles")
+}
+
+enum ExecutionPipelineMode {
+  SIMULATED
+  LIVE
+}
+
+enum RoutingMode {
+  B_BOOK_INTERNAL
+  A_BOOK_FIX
+  HYBRID_AUTO
 }
 
 model CopierEvent {

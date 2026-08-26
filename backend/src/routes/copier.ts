@@ -68,7 +68,7 @@ copierRouter.put('/profiles/:profileId', requireRole(['TENANT_ADMIN']), async (r
     res.status(404).json({ error: 'Copier profile not found' });
     return;
   }
-  const { name, enabled, maxSlippagePoints, volumeMultiplier } = req.body;
+  const { name, enabled, maxSlippagePoints, volumeMultiplier, executionMode, routingMode, reverseTrading, maxBBookExposureLots, maxDailyLossPercent, maxDrawdownPercent, maxExecutionTtlMs } = req.body;
   const updated = await prisma.copierProfile.update({
     where: { id: profileId },
     data: {
@@ -76,6 +76,13 @@ copierRouter.put('/profiles/:profileId', requireRole(['TENANT_ADMIN']), async (r
       enabled: typeof enabled === 'boolean' ? enabled : undefined,
       maxSlippagePoints: Number.isFinite(Number(maxSlippagePoints)) ? Number(maxSlippagePoints) : undefined,
       volumeMultiplier: Number.isFinite(Number(volumeMultiplier)) && Number(volumeMultiplier) > 0 ? Number(volumeMultiplier) : undefined,
+      executionMode: executionMode === 'LIVE' || executionMode === 'SIMULATED' ? executionMode : undefined,
+      routingMode: ['B_BOOK_INTERNAL', 'A_BOOK_FIX', 'HYBRID_AUTO'].includes(routingMode) ? routingMode : undefined,
+      reverseTrading: typeof reverseTrading === 'boolean' ? reverseTrading : undefined,
+      maxBBookExposureLots: Number.isFinite(Number(maxBBookExposureLots)) && Number(maxBBookExposureLots) >= 0 ? Number(maxBBookExposureLots) : undefined,
+      maxDailyLossPercent: Number.isFinite(Number(maxDailyLossPercent)) && Number(maxDailyLossPercent) >= 0 ? Number(maxDailyLossPercent) : undefined,
+      maxDrawdownPercent: Number.isFinite(Number(maxDrawdownPercent)) && Number(maxDrawdownPercent) >= 0 ? Number(maxDrawdownPercent) : undefined,
+      maxExecutionTtlMs: Number.isFinite(Number(maxExecutionTtlMs)) ? Math.min(Math.max(Number(maxExecutionTtlMs), 500), 1000) : undefined,
     },
   });
   res.json(updated);
@@ -83,7 +90,7 @@ copierRouter.put('/profiles/:profileId', requireRole(['TENANT_ADMIN']), async (r
 
 copierRouter.post('/profiles', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { name, masterConnectionId, maxSlippagePoints, volumeMultiplier } = req.body;
+  const { name, masterConnectionId, maxSlippagePoints, volumeMultiplier, executionMode, routingMode, reverseTrading, maxBBookExposureLots, maxDailyLossPercent, maxDrawdownPercent, maxExecutionTtlMs } = req.body;
   const master = await prisma.copierConnection.findFirst({ where: { id: masterConnectionId, tenantId, role: 'MASTER' } });
   if (!name || !master) {
     res.status(400).json({ error: 'A valid tenant-owned MASTER connection and profile name are required' });
@@ -96,6 +103,13 @@ copierRouter.post('/profiles', requireRole(['TENANT_ADMIN']), async (req: Authen
       masterConnectionId,
       maxSlippagePoints: Number.isFinite(Number(maxSlippagePoints)) ? Number(maxSlippagePoints) : 20,
       volumeMultiplier: Number.isFinite(Number(volumeMultiplier)) && Number(volumeMultiplier) > 0 ? Number(volumeMultiplier) : 1,
+      executionMode: executionMode === 'LIVE' ? 'LIVE' : 'SIMULATED',
+      routingMode: ['B_BOOK_INTERNAL', 'A_BOOK_FIX', 'HYBRID_AUTO'].includes(routingMode) ? routingMode : 'HYBRID_AUTO',
+      reverseTrading: reverseTrading === true,
+      maxBBookExposureLots: Number.isFinite(Number(maxBBookExposureLots)) && Number(maxBBookExposureLots) >= 0 ? Number(maxBBookExposureLots) : 100,
+      maxDailyLossPercent: Number.isFinite(Number(maxDailyLossPercent)) && Number(maxDailyLossPercent) >= 0 ? Number(maxDailyLossPercent) : 5,
+      maxDrawdownPercent: Number.isFinite(Number(maxDrawdownPercent)) && Number(maxDrawdownPercent) >= 0 ? Number(maxDrawdownPercent) : 10,
+      maxExecutionTtlMs: Number.isFinite(Number(maxExecutionTtlMs)) ? Math.min(Math.max(Number(maxExecutionTtlMs), 500), 1000) : 1000,
     },
   });
   res.status(201).json(profile);

@@ -24,6 +24,9 @@ interface CopierProfile {
   masterConnectionId: string;
   volumeMultiplier: number;
   maxSlippagePoints: number;
+  executionMode: 'SIMULATED' | 'LIVE';
+  routingMode: 'B_BOOK_INTERNAL' | 'A_BOOK_FIX' | 'HYBRID_AUTO';
+  reverseTrading: boolean;
 }
 
 export const Copier: React.FC = () => {
@@ -35,6 +38,11 @@ export const Copier: React.FC = () => {
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState<'MT4' | 'MT5'>('MT5');
   const [role, setRole] = useState<'MASTER' | 'SLAVE'>('MASTER');
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [masterConnectionId, setMasterConnectionId] = useState('');
+  const [executionMode, setExecutionMode] = useState<'SIMULATED' | 'LIVE'>('SIMULATED');
+  const [routingMode, setRoutingMode] = useState<'B_BOOK_INTERNAL' | 'A_BOOK_FIX' | 'HYBRID_AUTO'>('HYBRID_AUTO');
 
   const request = async (path: string, options?: RequestInit) => {
     const token = localStorage.getItem('brp_token');
@@ -69,6 +77,17 @@ export const Copier: React.FC = () => {
     }
   };
 
+  const addProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const response = await request('/api/copier/profiles', { method: 'POST', body: JSON.stringify({ name: profileName, masterConnectionId, executionMode, routingMode }) });
+    if (response.ok) {
+      setProfileName('');
+      setMasterConnectionId('');
+      setShowProfileForm(false);
+      await loadData();
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -89,7 +108,7 @@ export const Copier: React.FC = () => {
         </section>
 
         <section className="glass-panel rounded-custom bg-[#121721] p-6">
-          <div className="mb-5 flex items-center gap-2 border-b border-white/5 pb-3"><ShieldCheck className="h-4 w-4 text-accent-green" /><h3 className="font-mono text-xs font-bold tracking-widest text-slate-200">COPY PROFILES</h3></div>
+          <div className="mb-5 flex items-center justify-between gap-2 border-b border-white/5 pb-3"><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-accent-green" /><h3 className="font-mono text-xs font-bold tracking-widest text-slate-200">COPY PROFILES</h3></div><button onClick={() => setShowProfileForm(true)} className="text-accent-cyan"><Plus className="h-4 w-4" /></button></div>
           {profiles.length === 0 ? <p className="font-mono text-xs text-slate-500">Create a profile after registering a Master.</p> : profiles.map((profile) => <div key={profile.id} className="mb-3 border-b border-white/5 pb-3"><div className="flex justify-between"><span className="font-mono text-xs text-slate-200">{profile.name}</span><span className={profile.enabled ? 'text-accent-green' : 'text-slate-500'}>{profile.enabled ? 'ON' : 'OFF'}</span></div><p className="mt-1 font-mono text-[10px] text-slate-500">x{Number(profile.volumeMultiplier).toFixed(2)} volume / {profile.maxSlippagePoints} pt max</p></div>)}
         </section>
       </div>
@@ -100,6 +119,7 @@ export const Copier: React.FC = () => {
       </section>
 
       {showConnectionForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><form onSubmit={addConnection} className="glass-panel w-full max-w-md space-y-4 rounded-custom bg-[#121721] p-6"><h3 className="font-mono text-sm font-bold tracking-widest text-slate-100">REGISTER TERMINAL</h3><input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Terminal name" className="glass-input w-full px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-3"><select value={platform} onChange={(event) => setPlatform(event.target.value as 'MT4' | 'MT5')} className="glass-input px-3 py-2 text-sm"><option>MT5</option><option>MT4</option></select><select value={role} onChange={(event) => setRole(event.target.value as 'MASTER' | 'SLAVE')} className="glass-input px-3 py-2 text-sm"><option>MASTER</option><option>SLAVE</option></select></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setShowConnectionForm(false)} className="px-3 py-2 font-mono text-xs text-slate-400">CANCEL</button><button className="rounded-custom bg-accent-cyan px-3 py-2 font-mono text-xs font-bold text-[#0B0E14]">REGISTER</button></div></form></div>}
+      {showProfileForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><form onSubmit={addProfile} className="glass-panel w-full max-w-md space-y-4 rounded-custom bg-[#121721] p-6"><h3 className="font-mono text-sm font-bold tracking-widest text-slate-100">CREATE COPY PROFILE</h3><input required value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Profile name" className="glass-input w-full px-3 py-2 text-sm" /><select required value={masterConnectionId} onChange={(event) => setMasterConnectionId(event.target.value)} className="glass-input w-full px-3 py-2 text-sm"><option value="">Select Master terminal</option>{connections.filter((connection) => connection.role === 'MASTER').map((connection) => <option key={connection.id} value={connection.id}>{connection.name} ({connection.platform})</option>)}</select><div className="grid grid-cols-2 gap-3"><select value={executionMode} onChange={(event) => setExecutionMode(event.target.value as 'SIMULATED' | 'LIVE')} className="glass-input px-3 py-2 text-sm"><option value="SIMULATED">SIMULATED</option><option value="LIVE">LIVE</option></select><select value={routingMode} onChange={(event) => setRoutingMode(event.target.value as 'B_BOOK_INTERNAL' | 'A_BOOK_FIX' | 'HYBRID_AUTO')} className="glass-input px-3 py-2 text-sm"><option value="HYBRID_AUTO">HYBRID AUTO</option><option value="B_BOOK_INTERNAL">B-BOOK INTERNAL</option><option value="A_BOOK_FIX">A-BOOK FIX</option></select></div><p className="text-[10px] leading-4 text-slate-500">LIVE mode requires a registered broker adapter. It will fail closed until a real slave terminal is connected.</p><div className="flex justify-end gap-2"><button type="button" onClick={() => setShowProfileForm(false)} className="px-3 py-2 font-mono text-xs text-slate-400">CANCEL</button><button className="rounded-custom bg-accent-cyan px-3 py-2 font-mono text-xs font-bold text-[#0B0E14]">CREATE PROFILE</button></div></form></div>}
     </div>
   );
 };

@@ -9,6 +9,7 @@
  */
 
 import prisma from './db';
+import { dispatchAlert } from './notifications';
 
 interface BillingStatus {
   tenantId: string;
@@ -113,9 +114,7 @@ async function triggerAlertNotification(
   const message = `Tenant "${companyName}" (${tenantId}) has traded ${totalTraded.toFixed(2)} lots, crossing the ${threshold}% limit of ${limit.toFixed(2)} monthly allowed lots.`;
 
   console.log(`\n================== METERING ALERT: ${threshold}% ==================`);
-  console.log(`[CHANNEL: EMAIL] Sent to: support@${companyName.toLowerCase().replace(/[^a-z]/g, '')}.com`);
-  console.log(`[CHANNEL: TELEGRAM] Alert sent to Institutional Group: ${message}`);
-  console.log(`[CHANNEL: WEBHOOK] POST to: https://api.billing-meter.com/webhooks/alerts - Status: 200 OK`);
+  void dispatchAlert({ subject, text: message, severity: threshold === 100 ? 'CRITICAL' : 'WARN' });
   console.log(`============================================================\n`);
 
   // Write to database audit logs
