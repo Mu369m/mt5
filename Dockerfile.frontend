@@ -1,0 +1,21 @@
+# Production Railway image for the Vite SPA.
+FROM node:22-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY frontend/package.json frontend/package.json
+COPY shared/package.json shared/package.json
+RUN pnpm install --frozen-lockfile
+COPY tsconfig.base.json tsconfig.json ./
+COPY frontend frontend
+COPY shared shared
+RUN pnpm --filter @workspace/shared build && pnpm --filter @workspace/frontend build
+
+FROM nginx:1.27-alpine
+RUN apk add --no-cache gettext
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+COPY deploy/nginx.frontend.conf.template /etc/nginx/templates/default.conf.template
+COPY deploy/docker-entrypoint-frontend.sh /usr/local/bin/docker-entrypoint-frontend.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-frontend.sh
+EXPOSE 8080
+CMD ["/usr/local/bin/docker-entrypoint-frontend.sh"]

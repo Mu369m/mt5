@@ -13,6 +13,9 @@
     "db:generate": "pnpm --filter @workspace/backend run prisma:generate"
   },
   "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1"
   },
