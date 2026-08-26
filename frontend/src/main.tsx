@@ -20,6 +20,7 @@ import Policies from './pages/policies';
 import SuperAdmin from './pages/super-admin';
 import Login from './pages/login';
 import Register from './pages/register';
+import Clients from './pages/clients';
 import './index.css';
 
 // Direct routing guard checking authorization state
@@ -65,6 +66,7 @@ const RootApp = () => {
           {/* Public login/register endpoints */}
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
+          <Route path="/clients" component={Clients} />
 
           {/* Protected dashboard endpoints */}
           <Route path="/">

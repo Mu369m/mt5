@@ -12,7 +12,7 @@ import {
   Map, 
   ToggleLeft, 
   ToggleRight,
-  TrendingRight,
+  ArrowRight,
   CheckCircle,
   HelpCircle
 } from 'lucide-react';
@@ -219,7 +219,7 @@ export const Rules: React.FC = () => {
 
                   {/* Destination */}
                   <div className="col-span-3 flex items-center gap-1.5">
-                    <TrendingRight className="w-4 h-4 text-accent-green shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-accent-green shrink-0" />
                     <div>
                       <span className="font-semibold text-slate-100">
                         {rule.destination?.accountLabel || 'Target Connection'}

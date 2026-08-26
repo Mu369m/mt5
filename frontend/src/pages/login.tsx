@@ -121,8 +121,8 @@ export const Login: React.FC = () => {
 
         <div className="mt-8 text-center text-xs text-slate-400 border-t border-white/5 pt-4">
           Need to deploy a new tenant?{' '}
-          <Link href="/register">
-            <a className="text-accent-cyan hover:underline font-mono">[Register Client]</a>
+          <Link href="/register" className="text-accent-cyan hover:underline font-mono">
+            [Register Client]
           </Link>
         </div>
       </div>
