@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useLocation, Link } from 'wouter';
-import { ShieldCheck, Mail, Lock } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Eye } from 'lucide-react';
 import { useTheme } from '../theme';
 
 export const Login: React.FC = () => {
@@ -15,6 +15,17 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { loadBrandingAndTheme } = useTheme();
+
+  const handleDemoPreview = () => {
+    localStorage.setItem('brp_token', 'frontend-demo-preview');
+    localStorage.setItem('brp_user', JSON.stringify({
+      email: 'demo@local.preview',
+      role: 'TENANT_ADMIN',
+      companyName: 'Demo Workspace',
+      licenseKey: 'DEMO-PREVIEW',
+    }));
+    setLocation('/');
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +129,14 @@ export const Login: React.FC = () => {
             {loading ? 'Decrypting Session...' : 'Authenticate Token'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={handleDemoPreview}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+        >
+          <Eye className="h-4 w-4" /> VIEW DEMO WITHOUT LOGIN
+        </button>
 
         <div className="mt-8 text-center text-xs text-slate-400 border-t border-white/5 pt-4">
           Need to deploy a new tenant?{' '}

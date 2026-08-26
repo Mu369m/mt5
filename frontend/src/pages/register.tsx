@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useLocation, Link } from 'wouter';
-import { ShieldAlert, Building2, Mail, Lock, Code2 } from 'lucide-react';
+import { ShieldAlert, Building2, Mail, Lock, Code2, Eye } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const [companyName, setCompanyName] = useState('');
@@ -17,6 +17,17 @@ export const Register: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
+
+  const handleDemoPreview = () => {
+    localStorage.setItem('brp_token', 'frontend-demo-preview');
+    localStorage.setItem('brp_user', JSON.stringify({
+      email: 'demo@local.preview',
+      role: 'TENANT_ADMIN',
+      companyName: 'Demo Workspace',
+      licenseKey: 'DEMO-PREVIEW',
+    }));
+    setLocation('/');
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +202,14 @@ export const Register: React.FC = () => {
             {loading ? 'Executing Deploy...' : 'Deploy System instance'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={handleDemoPreview}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+        >
+          <Eye className="h-4 w-4" /> VIEW DEMO WITHOUT LOGIN
+        </button>
 
         <div className="mt-8 text-center text-xs text-slate-400 border-t border-white/5 pt-4">
           Already registered?{' '}
