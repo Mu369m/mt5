@@ -34,7 +34,11 @@ export async function resolveDestinationForGroup(
   symbol = 'EURUSD'
 ): Promise<RouteResolution | null> {
   const rules = await prisma.routingRule.findMany({
-    where: { tenantId, isEnabled: true },
+    where: {
+      tenantId,
+      isEnabled: true,
+      destination: { tenantId, enableForwarding: true },
+    },
     include: { destination: true },
     orderBy: { priority: 'desc' },
   });
@@ -43,10 +47,6 @@ export async function resolveDestinationForGroup(
     const minLot = Number(rule.minLot);
     const maxLot = Number(rule.maxLot);
     if (lots < minLot || lots > maxLot) {
-      return false;
-    }
-
-    if (!rule.destination.enableForwarding) {
       return false;
     }
 

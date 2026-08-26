@@ -131,7 +131,7 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
  */
 symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
   const {
     destinationId,
     sourceSymbol,
@@ -201,7 +201,7 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
  */
 symbolsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const existing = await prisma.symbolMapping.findFirst({

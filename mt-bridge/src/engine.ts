@@ -127,6 +127,9 @@ export async function executeTradeRoutingPipeline(order: OrderPayload): Promise<
 
     // 6. Scale trade volume (Cent Accounts lot standardizing divisor scaling)
     const scaledLots = scaleVolumeToDestination(order.lots, Number(dest.lotsDivisor));
+    if (scaledLots <= 0) {
+      throw new Error('Destination lots divisor is invalid for this order');
+    }
 
     // 7. Load Active Risk Policies
     const activePolicy = await prisma.executionPolicy.findFirst({

@@ -106,7 +106,7 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
  */
 policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
   const {
     policyName,
     addedLatencyOpenMs,
@@ -171,7 +171,7 @@ policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authentica
  */
 policiesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const existing = await prisma.executionPolicy.findFirst({

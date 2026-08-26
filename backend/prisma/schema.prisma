@@ -30,6 +30,9 @@ model Tenant {
   symbolMappings    SymbolMapping[]
   executionPolicies ExecutionPolicy[]
   auditLogs         AuditLog[]
+  copierConnections CopierConnection[]
+  copierProfiles    CopierProfile[]
+  copierEvents      CopierEvent[]
 
   @@index([licenseKey, status], name: "idx_tenants_license_status")
   @@map("tenants")
@@ -184,6 +187,108 @@ model AuditLog {
 
   @@index([tenantId, createdAt(sort: Desc)], name: "idx_audit_logs_tenant_time")
   @@map("audit_logs")
+}
+
+enum CopierPlatform {
+  MT4
+  MT5
+}
+
+enum CopierConnectionRole {
+  MASTER
+  SLAVE
+}
+
+enum CopierConnectionStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+enum CopierEventType {
+  ORDER_OPEN
+  ORDER_MODIFY
+  ORDER_CLOSE
+  PARTIAL_CLOSE
+  PENDING_TRIGGER
+}
+
+enum CopierEventStatus {
+  RECEIVED
+  DISPATCHED
+  APPLIED
+  FAILED
+  DUPLICATE
+}
+
+model CopierConnection {
+  id                String                 @id @default(uuid()) @db.Uuid
+  tenantId          String                 @map("tenant_id") @db.Uuid
+  name              String                 @db.VarChar(100)
+  platform          CopierPlatform
+  role              CopierConnectionRole
+  status            CopierConnectionStatus @default(OFFLINE)
+  lastHeartbeatAt   DateTime?              @map("last_heartbeat_at") @db.Timestamptz
+  terminalVersion   String?                @map("terminal_version") @db.VarChar(50)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  masterProfiles    CopierProfile[]        @relation("MasterConnection")
+  slaveEvents       CopierEvent[]          @relation("SlaveConnection")
+
+  @@index([tenantId, role, status], name: "idx_copier_connections_tenant")
+  @@map("copier_connections")
+}
+
+model CopierProfile {
+  id                  String            @id @default(uuid()) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  name                String            @db.VarChar(100)
+  masterConnectionId  String            @map("master_connection_id") @db.Uuid
+  enabled             Boolean           @default(false)
+  maxSlippagePoints   Int               @default(20) @map("max_slippage_points")
+  volumeMultiplier    Decimal           @default(1.0) @map("volume_multiplier") @db.Decimal(12, 6)
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  masterConnection    CopierConnection   @relation("MasterConnection", fields: [masterConnectionId], references: [id], onDelete: Cascade)
+  events              CopierEvent[]
+
+  @@index([tenantId, enabled], name: "idx_copier_profiles_tenant")
+  @@map("copier_profiles")
+}
+
+model CopierEvent {
+  id                String             @id @default(uuid()) @db.Uuid
+  tenantId          String             @map("tenant_id") @db.Uuid
+  profileId         String             @map("profile_id") @db.Uuid
+  slaveConnectionId String?            @map("slave_connection_id") @db.Uuid
+  eventId           String             @map("event_id") @db.VarChar(100)
+  masterTicket      String             @map("master_ticket") @db.VarChar(100)
+  eventType         CopierEventType    @map("event_type")
+  status            CopierEventStatus  @default(RECEIVED)
+  symbol            String             @db.VarChar(50)
+  direction         String?            @db.VarChar(4)
+  volumeLots        Decimal?           @map("volume_lots") @db.Decimal(12, 6)
+  price             Decimal?           @db.Decimal(20, 10)
+  stopLoss          Decimal?           @map("stop_loss") @db.Decimal(20, 10)
+  takeProfit        Decimal?           @map("take_profit") @db.Decimal(20, 10)
+  closeVolumeLots   Decimal?           @map("close_volume_lots") @db.Decimal(12, 6)
+  slaveTicket       String?            @map("slave_ticket") @db.VarChar(100)
+  latencyMs         Int?               @map("latency_ms")
+  errorMessage      String?            @map("error_message") @db.Text
+  occurredAt        DateTime           @map("occurred_at") @db.Timestamptz
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile           CopierProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  slaveConnection   CopierConnection?  @relation("SlaveConnection", fields: [slaveConnectionId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, eventId], name: "unique_copier_event_id")
+  @@index([tenantId, createdAt(sort: Desc)], name: "idx_copier_events_tenant_time")
+  @@map("copier_events")
 }
 
 enum LogLevel {

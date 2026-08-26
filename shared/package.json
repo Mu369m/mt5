@@ -5,10 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./math": "./dist/math.js",
-    "./types": "./dist/types.js",
-    "./constants": "./dist/constants.js"
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./math": { "types": "./dist/math.d.ts", "default": "./dist/math.js" },
+    "./types": { "types": "./dist/types.d.ts", "default": "./dist/types.js" },
+    "./constants": { "types": "./dist/constants.d.ts", "default": "./dist/constants.js" },
+    "./copier-types": { "types": "./dist/copier-types.d.ts", "default": "./dist/copier-types.js" }
   },
   "scripts": {
     "build": "tsc",

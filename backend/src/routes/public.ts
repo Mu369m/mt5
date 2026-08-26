@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import prisma from '../db';
-import { DEFAULT_BRANDING_CONFIG, DEFAULT_THEME_CONFIG } from '@workspace/shared/constants';
+import { DEFAULT_BRANDING_CONFIG, DEFAULT_THEME_CONFIG } from '@workspace/shared';
 
 export const publicRouter = Router();
 

@@ -104,7 +104,7 @@ adminRouter.post('/tenants', async (req: AuthenticatedRequest, res: Response) =>
  * Edit tenant attributes, suspend status, or adjust billing volume limits.
  */
 adminRouter.put('/tenants/:id', async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const { companyName, status, maxDestinations, monthlyVolumeLimitLots, licenseExpiresAt } = req.body;
 
   try {
@@ -139,7 +139,7 @@ adminRouter.put('/tenants/:id', async (req: AuthenticatedRequest, res: Response)
  * Hard revoke / delete tenant profile and cascading records.
  */
 adminRouter.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const deleted = await prisma.tenant.delete({
@@ -165,7 +165,7 @@ adminRouter.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Respon
  * Issue a short-lived JWT to view/manage a tenant dashboard as Super Admin.
  */
 adminRouter.post('/tenants/:id/impersonate', async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const tenant = await prisma.tenant.findUnique({
@@ -223,7 +223,7 @@ adminRouter.post('/tenants/:id/impersonate', async (req: AuthenticatedRequest, r
  * Instantly suspend tenant license and disable all LP forwarding (<1ms flag update).
  */
 adminRouter.post('/tenants/:id/kill-switch', async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const { suspend = true } = req.body;
 
   try {

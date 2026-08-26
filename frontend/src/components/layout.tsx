@@ -95,6 +95,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       const interval = setInterval(fetchTelemetry, 30000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [user]);
 
   const handleLogout = () => {
@@ -121,6 +122,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { href: '/rules', label: 'Dealer Matrix', icon: Compass },
     { href: '/symbols', label: 'Spread Injector', icon: TrendingUp },
     { href: '/policies', label: 'Execution & Slippage', icon: Settings },
+    { href: '/copier', label: 'Master / Slave Copier', icon: Network },
   ];
 
   if (user?.role === 'SUPER_ADMIN') {
@@ -159,15 +161,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isActive = location === link.href;
               const Icon = link.icon;
               return (
-                <Link key={link.href} href={link.href}>
-                  <a className={`flex items-center gap-3 px-4 py-3 rounded-custom text-sm font-medium transition-all ${
+                <Link key={link.href} href={link.href} className={`flex items-center gap-3 px-4 py-3 rounded-custom text-sm font-medium transition-all ${
                     isActive 
                       ? 'bg-accent-cyan/10 text-accent-cyan border-l-2 border-accent-cyan shadow-[inset_4px_0_12px_rgba(0,240,255,0.05)]' 
                       : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
                   }`}>
                     <Icon className="w-4 h-4 shrink-0" />
                     <span>{link.label}</span>
-                  </a>
                 </Link>
               );
             })}

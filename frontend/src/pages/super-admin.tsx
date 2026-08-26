@@ -17,7 +17,7 @@ import {
   Radio, 
   Check, 
   AlertOctagon,
-  Slider
+  Sliders
 } from 'lucide-react';
 import { useTheme } from '../theme';
 

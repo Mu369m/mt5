@@ -9,7 +9,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ThemeConfig, BrandingConfig } from '@workspace/shared/types';
+import { ThemeConfig, BrandingConfig } from '@workspace/shared';
 
 interface ThemeContextType {
   theme: ThemeConfig;
@@ -79,11 +79,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [theme, branding]);
 
   const updateTheme = (newTheme: Partial<ThemeConfig>) => {
-    setTheme((prev) => ({ ...prev, ...newTheme }));
+    setTheme((prev: ThemeConfig) => ({ ...prev, ...newTheme }));
   };
 
   const updateBranding = (newBranding: Partial<BrandingConfig>) => {
-    setBranding((prev) => ({ ...prev, ...newBranding }));
+    setBranding((prev: BrandingConfig) => ({ ...prev, ...newBranding }));
   };
 
   return (

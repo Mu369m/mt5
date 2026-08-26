@@ -135,7 +135,7 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
  */
 destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
   const {
     brokerName,
     accountLabel,
@@ -208,7 +208,7 @@ destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authen
  */
 destinationsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const existing = await prisma.lpDestination.findFirst({
@@ -245,7 +245,7 @@ destinationsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: Aut
  */
 destinationsRouter.post('/:id/ping', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const dest = await prisma.lpDestination.findFirst({

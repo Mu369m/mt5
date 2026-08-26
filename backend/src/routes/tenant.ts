@@ -9,7 +9,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import { validateLicense } from '../middleware/license';
 import prisma from '../db';
-import { METERED_EVENT_TYPES } from '@workspace/shared/constants';
+import { METERED_EVENT_TYPES } from '@workspace/shared';
 
 export const tenantRouter = Router();
 

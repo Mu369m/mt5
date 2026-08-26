@@ -21,6 +21,7 @@ import SuperAdmin from './pages/super-admin';
 import Login from './pages/login';
 import Register from './pages/register';
 import Clients from './pages/clients';
+import Copier from './pages/copier';
 import './index.css';
 
 // Direct routing guard checking authorization state
@@ -83,6 +84,9 @@ const RootApp = () => {
           </Route>
           <Route path="/policies">
             <RouteGuard component={Policies} path="/policies" />
+          </Route>
+          <Route path="/copier">
+            <RouteGuard component={Copier} path="/copier" />
           </Route>
           <Route path="/super-admin">
             <SuperAdminGuard component={SuperAdmin} />

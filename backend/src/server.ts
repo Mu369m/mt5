@@ -27,6 +27,7 @@ import { rulesRouter } from './routes/rules';
 import { symbolsRouter } from './routes/symbols';
 import { policiesRouter } from './routes/policies';
 import { sandboxRouter } from './routes/sandbox';
+import { copierRouter } from './routes/copier';
 import { authenticateToken } from './middleware/auth';
 import prisma from './db';
 import { registerTelemetryBroadcaster } from '../../mt-bridge/src/engine';
@@ -51,6 +52,7 @@ app.use('/api/rules', authenticateToken, rulesRouter);
 app.use('/api/symbols', authenticateToken, symbolsRouter);
 app.use('/api/policies', authenticateToken, policiesRouter);
 app.use('/api/sandbox', authenticateToken, sandboxRouter);
+app.use('/api/copier', authenticateToken, copierRouter);
 
 // Standard root diagnostics endpoint
 app.get('/health', (req, res) => {
