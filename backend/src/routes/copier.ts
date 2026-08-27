@@ -13,6 +13,7 @@ import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 import { recordHeartbeat, markStaleConnections, getConnectionState, dispatchCopierEvent } from '../../../mt-bridge/src/copier';
 import { CopierEventStatus } from '@prisma/client';
+import { enqueueAlert } from '../jobs';
 
 export const copierRouter = Router();
 copierRouter.use(validateLicense);
@@ -156,6 +157,13 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
     where: { id: created.id },
     data: { status: dispatch.status === 'APPLIED' ? 'APPLIED' : 'FAILED', latencyMs: dispatch.latencyMs, slaveTicket: dispatch.slaveTicket, errorMessage: dispatch.errorMessage, slaveConnectionId: req.body.slaveConnectionId || undefined },
   });
+  if (dispatch.status === 'FAILED') {
+    void enqueueAlert({
+      subject: 'Copier dispatch failed',
+      text: `${event.eventType} ${event.symbol} on event ${event.eventId}: ${dispatch.errorMessage ?? 'unknown error'}`,
+      severity: 'CRITICAL',
+    });
+  }
   res.status(dispatch.status === 'APPLIED' ? 202 : 503).json({ event: updated, dispatch });
 });
 

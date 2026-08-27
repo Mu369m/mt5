@@ -31,6 +31,7 @@ import { copierRouter } from './routes/copier';
 import { authenticateToken } from './middleware/auth';
 import prisma from './db';
 import { registerTelemetryBroadcaster } from '../../mt-bridge/src/engine';
+import './jobs';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -62,9 +63,21 @@ app.get('/health', (req, res) => {
 // Create HTTP Server
 const server = http.createServer(app);
 
-// Initialize WebSocket Telemetry Server on /ws path (matches Vite proxy)
-const wss = new WebSocketServer({ server, path: '/ws' });
+// Accept the dashboard and terminal endpoint paths on the same Railway listener.
+const wss = new WebSocketServer({ noServer: true });
 const connectedClients = new Set<WebSocket>();
+
+server.on('upgrade', (request, socket, head) => {
+  const pathname = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`).pathname;
+  if (!['/ws', '/ws/master', '/ws/slave'].includes(pathname)) {
+    socket.destroy();
+    return;
+  }
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
+});
 
 wss.on('connection', (ws: WebSocket) => {
   connectedClients.add(ws);

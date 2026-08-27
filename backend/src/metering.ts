@@ -26,7 +26,7 @@ const sentAlerts = new Map<string, { alert80: boolean; alert100: boolean }>();
 
 /**
  * Checks and updates the monthly lot trade volume consumption for a specific tenant.
- * Automatically dispatches simulated notification webhooks, emails, and telegram messages
+ * Dispatches an email alert
  * if critical thresholds (80% and 100% of limit) are crossed.
  * 
  * @param tenantId - The unique identifier of the tenant.
@@ -100,7 +100,7 @@ export async function trackUsageVolume(tenantId: string, additionalLots: number)
 }
 
 /**
- * Triggers simulated multi-channel webhook alerts when volume thresholds are crossed.
+ * Triggers an email alert when volume thresholds are crossed.
  * Writes a critical audit log warning that displays in real-time on the Admin Panel.
  */
 async function triggerAlertNotification(
@@ -128,7 +128,7 @@ async function triggerAlertNotification(
         threshold: threshold,
         totalTradedLots: totalTraded,
         limitLots: limit,
-        channels: ['email', 'telegram', 'webhook'],
+        channels: ['email'],
       },
     },
   });

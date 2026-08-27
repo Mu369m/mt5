@@ -1,8 +1,10 @@
 /**
  * @file backend/src/notifications.ts
- * @description Non-blocking multi-channel alert delivery for operational and risk events.
- * Channels are opt-in through environment variables and never block trade execution.
+ * @description Email-only alert delivery for operational and risk events.
+ * Delivery is opt-in through SMTP environment variables and never blocks trade execution.
  */
+
+import nodemailer from 'nodemailer';
 
 export interface AlertMessage {
   subject: string;
@@ -10,34 +12,39 @@ export interface AlertMessage {
   severity: 'WARN' | 'CRITICAL';
 }
 
-async function postJson(url: string, body: unknown, authorization?: string): Promise<void> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: authorization } : {}) },
-    body: JSON.stringify(body),
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character] ?? character);
+}
+
+function getTransporter(): nodemailer.Transporter | null {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT ?? 587);
+  if (!host || !Number.isInteger(port) || port <= 0) return null;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: process.env.SMTP_USER && process.env.SMTP_PASSWORD
+      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
+      : undefined,
   });
-  if (!response.ok) throw new Error(`Notification provider returned ${response.status}`);
 }
 
 export async function dispatchAlert(message: AlertMessage): Promise<void> {
-  const jobs: Promise<void>[] = [];
-  if (process.env.ALERT_WEBHOOK_URL) jobs.push(postJson(process.env.ALERT_WEBHOOK_URL, message));
-  if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-    jobs.push(postJson(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      chat_id: process.env.TELEGRAM_CHAT_ID,
-      text: `${message.subject}\n\n${message.text}`,
-    }));
+  const transporter = getTransporter();
+  const recipient = process.env.ALERT_EMAIL_TO;
+  const sender = process.env.EMAIL_FROM;
+  if (!transporter || !recipient || !sender) {
+    console.warn('[EMAIL_ALERT_SKIPPED] Configure SMTP_HOST, EMAIL_FROM, and ALERT_EMAIL_TO');
+    return;
   }
-  if (process.env.WHATSAPP_CLOUD_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_TO) {
-    jobs.push(postJson(`https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-      messaging_product: 'whatsapp',
-      to: process.env.WHATSAPP_TO,
-      type: 'text',
-      text: { body: `${message.subject}\n\n${message.text}` },
-    }, `Bearer ${process.env.WHATSAPP_CLOUD_TOKEN}`).catch(() => undefined));
-  }
-  const results = await Promise.allSettled(jobs);
-  for (const result of results) {
-    if (result.status === 'rejected') console.error('[ALERT_DELIVERY_FAILED]', result.reason);
-  }
+
+  await transporter.sendMail({
+    from: sender,
+    to: recipient,
+    subject: message.subject,
+    text: message.text,
+    html: `<main style="font-family:Arial,sans-serif;line-height:1.5"><h2>${escapeHtml(message.subject)}</h2><p>${escapeHtml(message.text).replace(/\n/g, '<br>')}</p><small>Severity: ${escapeHtml(message.severity)}</small></main>`,
+  });
 }
