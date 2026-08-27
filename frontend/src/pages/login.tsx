@@ -8,6 +8,15 @@ import { useLocation, Link } from 'wouter';
 import { ShieldCheck, Mail, Lock, Eye } from 'lucide-react';
 import { useTheme } from '../theme';
 
+interface LoginResponse {
+  error?: string;
+  token?: string;
+  user?: {
+    role?: string;
+    [key: string]: unknown;
+  };
+}
+
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,14 +51,18 @@ export const Login: React.FC = () => {
       });
 
       const responseText = await res.text();
-      let data: { error?: string; token?: string; user?: unknown } = {};
+      let data: LoginResponse = {};
       try {
-        data = JSON.parse(responseText) as { error?: string; token?: string; user?: unknown };
+        data = JSON.parse(responseText) as LoginResponse;
       } catch {
         throw new Error(`Authentication service unavailable (${res.status || 'no response'}). Please retry after the backend is online.`);
       }
       if (!res.ok) {
         throw new Error(data.error || 'Authentication failure');
+      }
+
+      if (!data.token || !data.user) {
+        throw new Error('Authentication service returned an incomplete response.');
       }
 
       // Save tokens
