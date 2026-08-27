@@ -11,6 +11,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import dotenv from 'dotenv';
 
@@ -55,9 +56,16 @@ app.use('/api/policies', authenticateToken, policiesRouter);
 app.use('/api/sandbox', authenticateToken, sandboxRouter);
 app.use('/api/copier', authenticateToken, copierRouter);
 
-// Standard root diagnostics endpoint
+// Serve the compiled React dashboard from the same Railway service.
+const frontendDist = path.resolve(__dirname, '../../../../frontend/dist');
+app.use(express.static(frontendDist));
+
 app.get('/', (req, res) => {
-  res.status(200).json({ service: 'BRP Trade Router API', status: 'ONLINE', health: '/health' });
+  res.sendFile(path.join(frontendDist, 'index.html'), (error) => {
+    if (error && !res.headersSent) {
+      res.status(200).json({ service: 'BRP Trade Router API', status: 'ONLINE', health: '/health' });
+    }
+  });
 });
 
 app.get('/health', (req, res) => {

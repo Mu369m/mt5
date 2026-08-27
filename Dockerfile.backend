@@ -1,4 +1,4 @@
-# Production Railway image for the Express/WebSocket backend.
+# Production Railway image for the Express/WebSocket backend and React dashboard.
 FROM node:22-alpine AS build
 WORKDIR /app
 RUN corepack enable && corepack install --global pnpm@9.15.9
@@ -12,8 +12,9 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY backend backend
 COPY mt-bridge mt-bridge
 COPY shared shared
+COPY frontend frontend
 COPY scripts scripts
-RUN pnpm --filter @workspace/shared build && pnpm --filter @workspace/backend build
+RUN pnpm --filter @workspace/shared build && pnpm --filter @workspace/frontend build && pnpm --filter @workspace/backend build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -27,6 +28,7 @@ COPY --from=build /app/shared/package.json shared/package.json
 COPY --from=build /app/backend/dist backend/dist
 COPY --from=build /app/backend/prisma backend/prisma
 COPY --from=build /app/shared/dist shared/dist
+COPY --from=build /app/frontend/dist frontend/dist
 COPY --from=build /app/scripts/start-backend.mjs scripts/start-backend.mjs
 RUN pnpm install --prod --frozen-lockfile
 RUN pnpm --filter @workspace/backend exec prisma generate --schema prisma/schema.prisma
