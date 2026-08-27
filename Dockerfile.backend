@@ -29,5 +29,6 @@ COPY --from=build /app/backend/prisma backend/prisma
 COPY --from=build /app/shared/dist shared/dist
 COPY --from=build /app/scripts/start-backend.mjs scripts/start-backend.mjs
 RUN pnpm install --prod --frozen-lockfile
+RUN pnpm --filter @workspace/backend exec prisma generate --schema prisma/schema.prisma
 EXPOSE 5000
 CMD ["node", "scripts/start-backend.mjs"]
