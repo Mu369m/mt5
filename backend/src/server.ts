@@ -56,6 +56,10 @@ app.use('/api/sandbox', authenticateToken, sandboxRouter);
 app.use('/api/copier', authenticateToken, copierRouter);
 
 // Standard root diagnostics endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ service: 'BRP Trade Router API', status: 'ONLINE', health: '/health' });
+});
+
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'HEALTHY', timestamp: new Date() });
 });
