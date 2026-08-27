@@ -13,6 +13,7 @@
     "db:generate": "pnpm --filter @workspace/backend run prisma:generate"
   },
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=22.12.0"
   },
