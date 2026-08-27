@@ -26,7 +26,6 @@ COPY --from=build /app/mt-bridge/package.json mt-bridge/package.json
 COPY --from=build /app/shared/package.json shared/package.json
 COPY --from=build /app/backend/dist backend/dist
 COPY --from=build /app/backend/prisma backend/prisma
-COPY --from=build /app/mt-bridge/dist mt-bridge/dist
 COPY --from=build /app/shared/dist shared/dist
 COPY --from=build /app/scripts/start-backend.mjs scripts/start-backend.mjs
 RUN pnpm install --prod --frozen-lockfile
