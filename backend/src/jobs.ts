@@ -3,17 +3,28 @@ import Redis from 'ioredis';
 import { dispatchAlert, type AlertMessage } from './notifications';
 
 const queueName = 'brp-alerts';
-const redisUrl = process.env.REDIS_URL;
+const configuredRedisUrl = process.env.REDIS_URL;
+const redisUrlIsLocal = configuredRedisUrl
+  ? ['localhost', '127.0.0.1', '::1'].includes(new URL(configuredRedisUrl).hostname)
+  : false;
+const redisUrl = process.env.NODE_ENV === 'production' && redisUrlIsLocal ? undefined : configuredRedisUrl;
 const redis = redisUrl ? new Redis(redisUrl, { maxRetriesPerRequest: null }) : null;
+
+if (configuredRedisUrl && !redisUrl) {
+  console.warn('[REDIS_DISABLED] Production REDIS_URL points to localhost; configure Railway Redis before enabling BullMQ');
+}
 
 const alertQueue = redis
   ? new Queue<AlertMessage>(queueName, { connection: redis })
   : null;
 
 if (redis) {
+  redis.on('error', (error) => console.error('[REDIS_CONNECTION_ERROR]', error.message));
   new Worker<AlertMessage>(queueName, async (job) => {
     await dispatchAlert(job.data);
-  }, { connection: redis });
+  }, { connection: redis }).on('error', (error) => {
+    console.error('[ALERT_WORKER_ERROR]', error.message);
+  });
 }
 
 export async function enqueueAlert(message: AlertMessage): Promise<void> {

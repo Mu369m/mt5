@@ -4,7 +4,7 @@ This repository deploys as two Railway services backed by Railway PostgreSQL and
 
 ## Backend service
 
-1. Create a Railway project and add PostgreSQL and Redis services. Link both services to the backend service so `DATABASE_URL` and `REDIS_URL` are injected.
+1. Create a Railway project and add PostgreSQL and Redis services. Link both services to the backend service so `DATABASE_URL` and `REDIS_URL` are injected. If entering variables manually, use Railway's service reference such as `${{Redis.REDIS_URL}}`, never `redis://localhost:6379`.
 2. Add a service from this GitHub repository and set its root directory to `/`.
 3. Keep the backend service using `railway.json`, which selects `Dockerfile.backend`. The container runs committed Prisma migrations before starting the API and WebSocket server.
 4. Set `JWT_SECRET`, `ENCRYPTION_KEY`, `SUPER_ADMIN_KEY`, `NODE_ENV=production`, and `FRONTEND_ORIGIN` as encrypted variables. Railway supplies `PORT`.
