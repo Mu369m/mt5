@@ -41,7 +41,13 @@ export const Login: React.FC = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: { error?: string; token?: string; user?: unknown } = {};
+      try {
+        data = JSON.parse(responseText) as { error?: string; token?: string; user?: unknown };
+      } catch {
+        throw new Error(`Authentication service unavailable (${res.status || 'no response'}). Please retry after the backend is online.`);
+      }
       if (!res.ok) {
         throw new Error(data.error || 'Authentication failure');
       }

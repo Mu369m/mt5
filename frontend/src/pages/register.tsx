@@ -55,7 +55,13 @@ export const Register: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: { error?: string } = {};
+      try {
+        data = JSON.parse(responseText) as { error?: string };
+      } catch {
+        throw new Error(`Registration service unavailable (${res.status || 'no response'}). Please retry after the backend is online.`);
+      }
       if (!res.ok) {
         throw new Error(data.error || 'Registration failure');
       }
