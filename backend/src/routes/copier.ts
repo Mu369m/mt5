@@ -310,8 +310,8 @@ copierRouter.get('/events', async (req: AuthenticatedRequest, res: Response) => 
   const tenantId = getTenantId(req)!;
 
   const rawLimit = req.query.limit;
-  if (rawLimit !== undefined && typeof rawLimit !== 'string') {
-    res.status(400).json({ error: 'Limit must be a positive integer' });
+  if (Array.isArray(rawLimit) || (rawLimit !== undefined && typeof rawLimit !== 'string')) {
+    res.status(400).json({ error: 'Limit must be a positive integer string' });
     return;
   }
 
