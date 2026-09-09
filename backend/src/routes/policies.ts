@@ -45,6 +45,12 @@ policiesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  */
 policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Policy payload is required' });
+    return;
+  }
+
   const {
     policyName,
     addedLatencyOpenMs,
@@ -56,7 +62,7 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
     isActive,
   } = req.body;
 
-  if (!policyName) {
+  if (typeof policyName !== 'string' || !policyName.trim()) {
     res.status(400).json({ error: 'Policy Name is a mandatory attribute' });
     return;
   }
@@ -73,7 +79,7 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
     const policy = await prisma.executionPolicy.create({
       data: {
         tenantId,
-        policyName,
+        policyName: policyName.trim(),
         addedLatencyOpenMs: addedLatencyOpenMs ? parseInt(addedLatencyOpenMs) : 0,
         addedLatencyCloseMs: addedLatencyCloseMs ? parseInt(addedLatencyCloseMs) : 0,
         requoteDelayMs: requoteDelayMs ? parseInt(requoteDelayMs) : 0,
@@ -89,7 +95,7 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
         tenantId,
         eventType: 'POLICY_CREATE',
         logLevel: 'INFO',
-        message: `Tenant defined new execution policy "${policyName}" (Active: ${policy.isActive})`,
+        message: `Tenant defined new execution policy "${policyName.trim()}" (Active: ${policy.isActive})`,
       },
     });
 
@@ -106,7 +112,18 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
  */
 policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Policy update payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Policy id is required' });
+    return;
+  }
+
   const {
     policyName,
     addedLatencyOpenMs,
@@ -139,14 +156,14 @@ policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authentica
     const updated = await prisma.executionPolicy.update({
       where: { id },
       data: {
-        policyName,
-        addedLatencyOpenMs: addedLatencyOpenMs ? parseInt(addedLatencyOpenMs) : undefined,
-        addedLatencyCloseMs: addedLatencyCloseMs ? parseInt(addedLatencyCloseMs) : undefined,
-        requoteDelayMs: requoteDelayMs ? parseInt(requoteDelayMs) : undefined,
-        maxDeviationPoints: maxDeviationPoints ? parseInt(maxDeviationPoints) : undefined,
-        goodPriceWindowPoints: goodPriceWindowPoints ? parseInt(goodPriceWindowPoints) : undefined,
-        badPriceWindowPoints: badPriceWindowPoints ? parseInt(badPriceWindowPoints) : undefined,
-        isActive,
+        policyName: typeof policyName === 'string' && policyName.trim() ? policyName.trim() : undefined,
+        addedLatencyOpenMs: typeof addedLatencyOpenMs === 'string' && addedLatencyOpenMs.trim() ? parseInt(addedLatencyOpenMs) : undefined,
+        addedLatencyCloseMs: typeof addedLatencyCloseMs === 'string' && addedLatencyCloseMs.trim() ? parseInt(addedLatencyCloseMs) : undefined,
+        requoteDelayMs: typeof requoteDelayMs === 'string' && requoteDelayMs.trim() ? parseInt(requoteDelayMs) : undefined,
+        maxDeviationPoints: typeof maxDeviationPoints === 'string' && maxDeviationPoints.trim() ? parseInt(maxDeviationPoints) : undefined,
+        goodPriceWindowPoints: typeof goodPriceWindowPoints === 'string' && goodPriceWindowPoints.trim() ? parseInt(goodPriceWindowPoints) : undefined,
+        badPriceWindowPoints: typeof badPriceWindowPoints === 'string' && badPriceWindowPoints.trim() ? parseInt(badPriceWindowPoints) : undefined,
+        isActive: typeof isActive === 'boolean' ? isActive : undefined,
       },
     });
 
@@ -172,6 +189,11 @@ policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authentica
 policiesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
   const id = String(req.params.id);
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Policy id is required' });
+    return;
+  }
 
   try {
     const existing = await prisma.executionPolicy.findFirst({
@@ -208,7 +230,17 @@ policiesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: Authent
  */
 policiesRouter.post('/kill-switch', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Kill-switch payload is required' });
+    return;
+  }
+
   const { active } = req.body;
+  if (typeof active !== 'boolean') {
+    res.status(400).json({ error: 'Kill-switch active flag must be a boolean' });
+    return;
+  }
 
   try {
     const suspend = active === false;
