@@ -66,3 +66,10 @@ test('netting engine rejects invalid tenant context, symbol and direction before
   assert.throws(() => processNettingOffset('tenant', 'EURUSD', 'HOLD', 1), /Direction must be BUY or SELL/);
   assert.throws(() => processNettingOffset('tenant', 'EURUSD', 'BUY', 0), /Volume lots must be a positive finite number/);
 });
+
+test('risk engine rejects malformed flow profile and execution config before routing a book', () => {
+  const { classifyFlow, evaluateTrade, calculateCopyLots } = require('../mt-bridge/dist/risk.js');
+  assert.throws(() => classifyFlow({}), /Invalid flow profile input/);
+  assert.equal(calculateCopyLots({ lotSizingMode: 'FIXED', fixedLots: 1 }, 0, 100, 100), 0);
+  assert.deepEqual(evaluateTrade({}, 'EURUSD', 'BUY', 1, 'B_BOOK', 0), { allowed: false, reason: 'Invalid execution config', direction: 'BUY', volumeLots: 1, book: 'B_BOOK' });
+});
