@@ -187,6 +187,11 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
   const tenantId = getTenantId(req)!;
   const profileId = String(req.params.profileId);
 
+  if (typeof profileId !== 'string' || !profileId.trim()) {
+    res.status(400).json({ error: 'Profile id is required' });
+    return;
+  }
+
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     res.status(400).json({ error: 'Event payload is required' });
     return;
@@ -197,7 +202,7 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
     return;
   }
 
-  const profile = await prisma.copierProfile.findFirst({ where: { id: profileId, tenantId, enabled: true } });
+  const profile = await prisma.copierProfile.findFirst({ where: { id: profileId.trim(), tenantId, enabled: true } });
   if (!profile) {
     res.status(404).json({ error: 'Enabled copier profile not found' });
     return;
@@ -205,17 +210,12 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
 
   const event = req.body;
   const eventTypes = ['ORDER_OPEN', 'ORDER_MODIFY', 'ORDER_CLOSE', 'PARTIAL_CLOSE', 'PENDING_TRIGGER'];
-  if (!event?.eventId || !event?.masterTicket || !eventTypes.includes(event?.eventType) || !event?.symbol) {
+  if (typeof event?.eventId !== 'string' || !event.eventId.trim() || typeof event?.masterTicket !== 'string' || !event.masterTicket.trim() || !eventTypes.includes(event?.eventType) || typeof event?.symbol !== 'string' || !event.symbol.trim()) {
     res.status(400).json({ error: 'eventId, masterTicket, eventType, and symbol are required' });
     return;
   }
 
-  if (typeof event.symbol !== 'string' || !event.symbol.trim()) {
-    res.status(400).json({ error: 'Symbol is required' });
-    return;
-  }
-
-  const existing = await prisma.copierEvent.findFirst({ where: { tenantId, eventId: event.eventId } });
+  const existing = await prisma.copierEvent.findFirst({ where: { tenantId, eventId: event.eventId.trim() } });
   if (existing) {
     res.status(200).json({ event: existing, status: 'DUPLICATE' satisfies CopierEventStatus });
     return;
@@ -225,10 +225,10 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
     data: {
       tenantId,
       profileId: profile.id,
-      eventId: event.eventId,
-      masterTicket: event.masterTicket,
+      eventId: event.eventId.trim(),
+      masterTicket: event.masterTicket.trim(),
       eventType: event.eventType,
-      symbol: event.symbol,
+      symbol: event.symbol.trim(),
       direction: event.direction,
       volumeLots: event.volumeLots,
       price: event.price,
