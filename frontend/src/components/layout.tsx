@@ -125,6 +125,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { href: '/copier', label: 'Master / Slave Copier', icon: Network },
   ];
 
+  if (user?.role === 'TENANT_ADMIN') {
+    sidebarLinks.push({ href: '/tenant-admin', label: 'Broker Admin Controls', icon: Settings });
+  }
+
   if (user?.role === 'SUPER_ADMIN') {
     sidebarLinks.push({ href: '/super-admin', label: 'Super-Admin CMS', icon: UserCheck });
   }
