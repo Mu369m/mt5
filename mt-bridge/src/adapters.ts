@@ -153,6 +153,51 @@ export class SandboxTradingDestinationAdapter implements TradingDestinationAdapt
  * Convenience factory for a sandbox-safe adapter that refuses to masquerade as a
  * live bridge permission.
  */
+export class UnavailableTradingDestinationAdapter implements TradingDestinationAdapter {
+  readonly mode: TradingDestinationMode = 'SANDBOX';
+  readonly liveEnabled = false;
+
+  async connect(): Promise<void> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async disconnect(): Promise<void> {
+    return;
+  }
+
+  async healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }> {
+    return { status: 'OFFLINE', latencyMs: 0 };
+  }
+
+  async getAccountMode(): Promise<'HEDGING' | 'NETTING' | 'UNKNOWN'> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async sendMarketOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async sendLimitOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async closeOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+
+  async modifyOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('No live trading destination adapter is connected');
+  }
+}
+
 export function createSandboxTradingDestinationAdapter(): TradingDestinationAdapter {
   return new SandboxTradingDestinationAdapter();
+}
+
+export function createUnavailableTradingDestinationAdapter(): TradingDestinationAdapter {
+  return new UnavailableTradingDestinationAdapter();
 }
