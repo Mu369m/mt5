@@ -232,25 +232,25 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
   }
 
   const safePrice = typeof event.price === 'number' ? event.price : typeof event.price === 'string' && event.price.trim() ? Number.parseFloat(event.price) : undefined;
-  if (typeof event.price === 'string' && event.price.trim() && (!Number.isFinite(safePrice) || safePrice === undefined)) {
+  if ((typeof event.price === 'number' && !Number.isFinite(event.price)) || (typeof event.price === 'string' && event.price.trim() && (!Number.isFinite(safePrice) || safePrice === undefined))) {
     res.status(400).json({ error: 'price must be a finite number when provided' });
     return;
   }
 
   const safeStopLoss = typeof event.stopLoss === 'number' ? event.stopLoss : typeof event.stopLoss === 'string' && event.stopLoss.trim() ? Number.parseFloat(event.stopLoss) : undefined;
-  if (typeof event.stopLoss === 'string' && event.stopLoss.trim() && (!Number.isFinite(safeStopLoss) || safeStopLoss === undefined)) {
+  if ((typeof event.stopLoss === 'number' && !Number.isFinite(event.stopLoss)) || (typeof event.stopLoss === 'string' && event.stopLoss.trim() && (!Number.isFinite(safeStopLoss) || safeStopLoss === undefined))) {
     res.status(400).json({ error: 'stopLoss must be a finite number when provided' });
     return;
   }
 
   const safeTakeProfit = typeof event.takeProfit === 'number' ? event.takeProfit : typeof event.takeProfit === 'string' && event.takeProfit.trim() ? Number.parseFloat(event.takeProfit) : undefined;
-  if (typeof event.takeProfit === 'string' && event.takeProfit.trim() && (!Number.isFinite(safeTakeProfit) || safeTakeProfit === undefined)) {
+  if ((typeof event.takeProfit === 'number' && !Number.isFinite(event.takeProfit)) || (typeof event.takeProfit === 'string' && event.takeProfit.trim() && (!Number.isFinite(safeTakeProfit) || safeTakeProfit === undefined))) {
     res.status(400).json({ error: 'takeProfit must be a finite number when provided' });
     return;
   }
 
   const safeCloseVolumeLots = typeof event.closeVolumeLots === 'number' ? event.closeVolumeLots : typeof event.closeVolumeLots === 'string' && event.closeVolumeLots.trim() ? Number.parseFloat(event.closeVolumeLots) : undefined;
-  if (typeof event.closeVolumeLots === 'string' && event.closeVolumeLots.trim() && (!Number.isFinite(safeCloseVolumeLots) || safeCloseVolumeLots === undefined)) {
+  if ((typeof event.closeVolumeLots === 'number' && !Number.isFinite(event.closeVolumeLots)) || (typeof event.closeVolumeLots === 'string' && event.closeVolumeLots.trim() && (!Number.isFinite(safeCloseVolumeLots) || safeCloseVolumeLots === undefined))) {
     res.status(400).json({ error: 'closeVolumeLots must be a finite number when provided' });
     return;
   }
