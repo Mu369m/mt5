@@ -128,7 +128,7 @@ tenantRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response)
   const pageValue = req.query.page ?? '1';
   const limitValue = req.query.limit ?? '20';
 
-  if (typeof pageValue !== 'string' || typeof limitValue !== 'string') {
+  if (Array.isArray(pageValue) || Array.isArray(limitValue) || typeof pageValue !== 'string' || typeof limitValue !== 'string') {
     res.status(400).json({ error: 'page and limit must be query strings' });
     return;
   }

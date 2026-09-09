@@ -14,6 +14,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../db';
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export const authRouter = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
 
@@ -34,15 +38,20 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const { companyName, email, password, superAdminCode } = req.body;
+  const { companyName, email, password, superAdminCode } = req.body as Record<string, unknown>;
 
-  if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password.trim()) {
+  if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
     res.status(400).json({ error: 'Email and password are required' });
     return;
   }
 
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
+
+  if (typeof superAdminCode !== 'undefined' && typeof superAdminCode !== 'string') {
+    res.status(400).json({ error: 'Super admin setup key must be a string when supplied' });
+    return;
+  }
 
   if (typeof superAdminCode === 'string' && !superAdminCode.trim()) {
     res.status(400).json({ error: 'Super admin setup key must be a non-empty string when supplied' });
@@ -51,6 +60,11 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 
   if (typeof companyName !== 'undefined' && typeof companyName !== 'string') {
     res.status(400).json({ error: 'Company name must be a string when supplied' });
+    return;
+  }
+
+  if (typeof companyName === 'string' && !companyName.trim()) {
+    res.status(400).json({ error: 'Company Name is required for standard client accounts' });
     return;
   }
 
@@ -179,9 +193,9 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  const { email, password } = req.body;
+  const { email, password } = req.body as Record<string, unknown>;
 
-  if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password.trim()) {
+  if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
     res.status(400).json({ error: 'Credentials are required' });
     return;
   }
