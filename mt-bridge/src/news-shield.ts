@@ -16,6 +16,18 @@ interface NewsEvent {
   timestamp: number; // Unix Epoch MS
 }
 
+function assertValidTitle(title: string): void {
+  if (typeof title !== 'string' || !title.trim()) {
+    throw new Error('Title is required');
+  }
+}
+
+function assertValidDelayMinutes(delayMinutes: number): void {
+  if (!Number.isFinite(delayMinutes) || delayMinutes <= 0) {
+    throw new Error('Delay minutes must be a finite positive number');
+  }
+}
+
 // In-memory calendar cache for high-impact economic news releases
 let economicCalendar: NewsEvent[] = [];
 
@@ -96,10 +108,13 @@ export function checkNewsShieldWindow(): {
  * Manually inserts a custom news event timestamp (useful for onboarding testing).
  */
 export function injectTestNewsEvent(title: string, delayMinutes: number): void {
+  assertValidTitle(title);
+  assertValidDelayMinutes(delayMinutes);
+
   const now = Date.now();
   economicCalendar.push({
     id: `test-news-${now}`,
-    title,
+    title: title.trim(),
     country: 'ALL',
     impact: 'HIGH',
     timestamp: now + delayMinutes * 60 * 1000,

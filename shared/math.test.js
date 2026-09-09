@@ -92,3 +92,10 @@ test('router rejects malformed rule-resolution inputs before scanning Prisma rou
   await assert.rejects(() => resolveDestinationForGroup('tenant-id', 'JK1\\1A\\G-fwd', 0, 'EURUSD'), /Lots must be a positive finite number/);
   await assert.rejects(() => resolveDestinationForGroup('tenant-id', 'JK1\\1A\\G-fwd', 1, ''), /Symbol is required/);
 });
+
+test('news shield rejects malformed calendar and test event input before volatility window scoring', () => {
+  const { checkNewsShieldWindow, injectTestNewsEvent } = require('../mt-bridge/dist/news-shield.js');
+  assert.equal(checkNewsShieldWindow().isShieldActive, false);
+  assert.throws(() => injectTestNewsEvent('', 5), /Title is required/);
+  assert.throws(() => injectTestNewsEvent('NFP Event', Number.NaN), /Delay minutes must be a finite positive number/);
+});
