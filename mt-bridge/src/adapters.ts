@@ -30,12 +30,16 @@ export interface SlaveAdapter {
  * project brief. Live dispatch remains disabled until an enableLive flag is
  * passed explicitly. Everything defaults to a sandbox-safe simulation path.
  */
+export type TradingDestinationMode = 'SANDBOX' | 'LIVE';
+
 export interface TradingDestinationAdapter {
+  readonly mode: TradingDestinationMode;
+  readonly liveEnabled: boolean;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }>; 
+  healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }>;
   getAccountMode(): Promise<'HEDGING' | 'NETTING' | 'UNKNOWN'>;
-  getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }>; 
+  getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }>;
   sendMarketOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
   sendLimitOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
   closeOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
@@ -76,6 +80,8 @@ export class UnavailableSlaveAdapter implements SlaveAdapter {
  * requested “paper/sandbox mode first enabled” philosophy in the codebase.
  */
 export class SandboxTradingDestinationAdapter implements TradingDestinationAdapter {
+  readonly mode: TradingDestinationMode = 'SANDBOX';
+  readonly liveEnabled = false;
   private connected = false;
 
   async connect(): Promise<void> {

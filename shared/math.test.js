@@ -21,3 +21,12 @@ test('shared math decimal and markup utilities honor expected precision', () => 
   assert.equal(math.pipsToPoints(10, 5), 100);
   assert.equal(math.pointsToPips(20, 5), 2);
 });
+
+test('sandbox adapter mode remains explicit and disconnected by default', async () => {
+  const { createSandboxTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
+  const adapter = createSandboxTradingDestinationAdapter();
+  assert.equal(adapter.mode, 'SANDBOX');
+  assert.equal(adapter.liveEnabled, false);
+  const health = await adapter.healthCheck();
+  assert.equal(health.status, 'OFFLINE');
+});
