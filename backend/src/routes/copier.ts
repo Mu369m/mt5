@@ -258,6 +258,18 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
 
 copierRouter.get('/events', async (req: AuthenticatedRequest, res: Response) => {
   const tenantId = getTenantId(req)!;
-  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+
+  const rawLimit = req.query.limit;
+  if (rawLimit !== undefined && typeof rawLimit !== 'string') {
+    res.status(400).json({ error: 'Limit must be a positive integer' });
+    return;
+  }
+
+  if (typeof rawLimit === 'string' && rawLimit.trim() && (!/^\d+$/.test(rawLimit.trim()) || Number(rawLimit.trim()) < 1)) {
+    res.status(400).json({ error: 'Limit must be a positive integer' });
+    return;
+  }
+
+  const limit = Math.min(Math.max(Number(rawLimit) || 50, 1), 200);
   res.json(await prisma.copierEvent.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: limit }));
 });
