@@ -53,6 +53,12 @@ symbolsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  */
 symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Symbol mapping payload is required' });
+    return;
+  }
+
   const {
     destinationId,
     sourceSymbol,
@@ -65,7 +71,7 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
     passFillPrice,
   } = req.body;
 
-  if (!destinationId || !sourceSymbol || !destinationSymbol) {
+  if (typeof destinationId !== 'string' || !destinationId.trim() || typeof sourceSymbol !== 'string' || !sourceSymbol.trim() || typeof destinationSymbol !== 'string' || !destinationSymbol.trim()) {
     res.status(400).json({ error: 'Destination, Source Symbol, and Destination Symbol are required' });
     return;
   }
@@ -73,7 +79,7 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
   try {
     // Confirm destination belongs to the same tenant
     const dest = await prisma.lpDestination.findFirst({
-      where: { id: destinationId, tenantId },
+      where: { id: destinationId.trim(), tenantId },
     });
 
     if (!dest) {
@@ -83,12 +89,12 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
 
     // Check if unique constraint is violated: UNIQUE (tenant_id, destination_id, source_symbol)
     const existing = await prisma.symbolMapping.findFirst({
-      where: { tenantId, destinationId, sourceSymbol },
+      where: { tenantId, destinationId: destinationId.trim(), sourceSymbol: sourceSymbol.trim() },
     });
 
     if (existing) {
       res.status(409).json({
-        error: `A mapping for symbol "${sourceSymbol}" on destination "${dest.accountLabel}" already exists.`,
+        error: `A mapping for symbol "${sourceSymbol.trim()}" on destination "${dest.accountLabel}" already exists.`,
       });
       return;
     }
@@ -96,25 +102,25 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
     const mapping = await prisma.symbolMapping.create({
       data: {
         tenantId,
-        destinationId,
-        sourceSymbol,
-        destinationSymbol,
-        markupPoints: markupPoints ? parseFloat(markupPoints) : 0.0,
-        commissionOverride: commissionOverride ? parseFloat(commissionOverride) : 0.0,
-        swapBuyOverride: swapBuyOverride ? parseFloat(swapBuyOverride) : 0.0,
-        swapSellOverride: swapSellOverride ? parseFloat(swapSellOverride) : 0.0,
-        passSourceSpread: passSourceSpread !== false,
-        passFillPrice: passFillPrice === true,
+        destinationId: destinationId.trim(),
+        sourceSymbol: sourceSymbol.trim(),
+        destinationSymbol: destinationSymbol.trim(),
+        markupPoints: typeof markupPoints === 'string' && markupPoints.trim() ? parseFloat(markupPoints) : 0.0,
+        commissionOverride: typeof commissionOverride === 'string' && commissionOverride.trim() ? parseFloat(commissionOverride) : 0.0,
+        swapBuyOverride: typeof swapBuyOverride === 'string' && swapBuyOverride.trim() ? parseFloat(swapBuyOverride) : 0.0,
+        swapSellOverride: typeof swapSellOverride === 'string' && swapSellOverride.trim() ? parseFloat(swapSellOverride) : 0.0,
+        passSourceSpread: typeof passSourceSpread === 'boolean' ? passSourceSpread : true,
+        passFillPrice: typeof passFillPrice === 'boolean' ? passFillPrice : false,
       },
     });
 
     await prisma.auditLog.create({
       data: {
         tenantId,
-        destinationId,
+        destinationId: destinationId.trim(),
         eventType: 'SYMBOL_MAP_CREATE',
         logLevel: 'INFO',
-        message: `Tenant registered translation mapping: "${sourceSymbol}" -> "${destinationSymbol}" with markup ${markupPoints || 0} pts`,
+        message: `Tenant registered translation mapping: "${sourceSymbol.trim()}" -> "${destinationSymbol.trim()}" with markup ${typeof markupPoints === 'string' && markupPoints.trim() ? parseFloat(markupPoints) : 0} pts`,
       },
     });
 
@@ -131,7 +137,18 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
  */
 symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Symbol mapping update payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Symbol mapping id is required' });
+    return;
+  }
+
   const {
     destinationId,
     sourceSymbol,
@@ -154,9 +171,9 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
       return;
     }
 
-    if (destinationId) {
+    if (typeof destinationId === 'string' && destinationId.trim()) {
       const dest = await prisma.lpDestination.findFirst({
-        where: { id: destinationId, tenantId },
+        where: { id: destinationId.trim(), tenantId },
       });
       if (!dest) {
         res.status(404).json({ error: 'Target connection destination not found' });
@@ -167,15 +184,15 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
     const updated = await prisma.symbolMapping.update({
       where: { id },
       data: {
-        destinationId,
-        sourceSymbol,
-        destinationSymbol,
-        markupPoints: markupPoints ? parseFloat(markupPoints) : undefined,
-        commissionOverride: commissionOverride ? parseFloat(commissionOverride) : undefined,
-        swapBuyOverride: swapBuyOverride ? parseFloat(swapBuyOverride) : undefined,
-        swapSellOverride: swapSellOverride ? parseFloat(swapSellOverride) : undefined,
-        passSourceSpread,
-        passFillPrice,
+        destinationId: typeof destinationId === 'string' && destinationId.trim() ? destinationId.trim() : undefined,
+        sourceSymbol: typeof sourceSymbol === 'string' && sourceSymbol.trim() ? sourceSymbol.trim() : undefined,
+        destinationSymbol: typeof destinationSymbol === 'string' && destinationSymbol.trim() ? destinationSymbol.trim() : undefined,
+        markupPoints: typeof markupPoints === 'string' && markupPoints.trim() ? parseFloat(markupPoints) : undefined,
+        commissionOverride: typeof commissionOverride === 'string' && commissionOverride.trim() ? parseFloat(commissionOverride) : undefined,
+        swapBuyOverride: typeof swapBuyOverride === 'string' && swapBuyOverride.trim() ? parseFloat(swapBuyOverride) : undefined,
+        swapSellOverride: typeof swapSellOverride === 'string' && swapSellOverride.trim() ? parseFloat(swapSellOverride) : undefined,
+        passSourceSpread: typeof passSourceSpread === 'boolean' ? passSourceSpread : undefined,
+        passFillPrice: typeof passFillPrice === 'boolean' ? passFillPrice : undefined,
       },
     });
 
@@ -202,6 +219,11 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
 symbolsRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
   const id = String(req.params.id);
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Symbol mapping id is required' });
+    return;
+  }
 
   try {
     const existing = await prisma.symbolMapping.findFirst({
