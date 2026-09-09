@@ -4,14 +4,22 @@ import { dispatchAlert, type AlertMessage } from './notifications';
 
 const queueName = 'brp-alerts';
 const configuredRedisUrl = process.env.REDIS_URL;
-const redisUrlIsLocal = configuredRedisUrl
-  ? ['localhost', '127.0.0.1', '::1'].includes(new URL(configuredRedisUrl).hostname)
-  : false;
+
+let redisUrlIsLocal = false;
+if (configuredRedisUrl) {
+  try {
+    const parsed = new URL(configuredRedisUrl);
+    redisUrlIsLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  } catch {
+    redisUrlIsLocal = false;
+  }
+}
+
 const redisUrl = process.env.NODE_ENV === 'production' && redisUrlIsLocal ? undefined : configuredRedisUrl;
 const redis = redisUrl ? new Redis(redisUrl, { maxRetriesPerRequest: null }) : null;
 
 if (configuredRedisUrl && !redisUrl) {
-  console.warn('[REDIS_DISABLED] Production REDIS_URL points to localhost; configure Railway Redis before enabling BullMQ');
+  console.warn('[REDIS_DISABLED] Production REDIS_URL points to localhost or an unparseable value; configure Railway Redis before enabling BullMQ');
 }
 
 const alertQueue = redis
