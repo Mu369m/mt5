@@ -6,6 +6,8 @@
  */
 
 import type { CopierPlatform, CopierTradeEvent, PositionSnapshot } from '@workspace/shared';
+import type { ExecutionCommand } from '@workspace/shared';
+import type { ExecutionResponse } from './execution-safety';
 
 export interface MasterAdapter {
   readonly platform: CopierPlatform;
@@ -21,6 +23,23 @@ export interface SlaveAdapter {
   modifyPosition(event: CopierTradeEvent, slaveTicket: string): Promise<void>;
   closePosition(event: CopierTradeEvent, slaveTicket: string, volumeLots?: number): Promise<void>;
   snapshot(): Promise<PositionSnapshot[]>;
+}
+
+/**
+ * Trading destination adapter for the connector abstraction requested by the
+ * project brief. Live dispatch remains disabled until an enableLive flag is
+ * passed explicitly. Everything defaults to a sandbox-safe simulation path.
+ */
+export interface TradingDestinationAdapter {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }>; 
+  getAccountMode(): Promise<'HEDGING' | 'NETTING' | 'UNKNOWN'>;
+  getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }>; 
+  sendMarketOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
+  sendLimitOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
+  closeOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
+  modifyOrder(command: ExecutionCommand): Promise<ExecutionResponse>;
 }
 
 /**
@@ -49,4 +68,85 @@ export class UnavailableSlaveAdapter implements SlaveAdapter {
   async snapshot(): Promise<PositionSnapshot[]> {
     throw new Error('No live slave terminal adapter is connected');
   }
+}
+
+/**
+ * Sandbox trial adapter: makes the connector contract visible without allowing
+ * the live execution branch to become an implicit default. This keeps the
+ * requested “paper/sandbox mode first enabled” philosophy in the codebase.
+ */
+export class SandboxTradingDestinationAdapter implements TradingDestinationAdapter {
+  private connected = false;
+
+  async connect(): Promise<void> {
+    this.connected = true;
+  }
+
+  async disconnect(): Promise<void> {
+    this.connected = false;
+  }
+
+  async healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }> {
+    return {
+      status: this.connected ? 'ONLINE' : 'OFFLINE',
+      latencyMs: 1,
+    };
+  }
+
+  async getAccountMode(): Promise<'HEDGING' | 'NETTING' | 'UNKNOWN'> {
+    return 'HEDGING';
+  }
+
+  async getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }> {
+    const upper = symbol.toUpperCase();
+    return {
+      symbol: upper,
+      digits: upper.includes('JPY') || upper.includes('XAU') ? 2 : 5,
+      pipSize: upper.includes('JPY') ? 0.01 : 0.0001,
+    };
+  }
+
+  async sendMarketOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    return {
+      filled: false,
+      fillPrice: 0,
+      filledVolumeLots: command.volumeLots ?? 0,
+      slippagePoints: 0,
+    };
+  }
+
+  async sendLimitOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    return {
+      filled: false,
+      fillPrice: 0,
+      filledVolumeLots: command.volumeLots ?? 0,
+      slippagePoints: 0,
+    };
+  }
+
+  async closeOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    return {
+      filled: false,
+      fillPrice: 0,
+      filledVolumeLots: command.volumeLots ?? 0,
+      slippagePoints: 0,
+    };
+  }
+
+  async modifyOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    return {
+      filled: false,
+      fillPrice: 0,
+      filledVolumeLots: command.volumeLots ?? 0,
+      slippagePoints: 0,
+    };
+  }
+}
+
+/**
+ * Convenience factory for a sandbox-safe adapter that refuses to masquerade as a
+ * live bridge permission.
+ */
+export function createSandboxTradingDestinationAdapter(): TradingDestinationAdapter {
+  return new SandboxTradingDestinationAdapter();
 }

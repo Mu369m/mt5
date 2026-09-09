@@ -158,3 +158,102 @@ export function calculateSlippage(requestedPrice: number, filledPrice: number, d
   const diff = Math.abs(filledPrice - requestedPrice);
   return Math.round(diff / pointValue);
 }
+
+/**
+ * Converts a number of price points into a pips count. One pip is a 10-point
+ * movement for the standard 4-digit feed mapping, and the conversion remains
+ * safe for 2/3/4/5-digit symbols through the symbol resolution constant.
+ */
+export function pointsToPips(points: number, digits = 5): number {
+  if (typeof points !== 'number' || !Number.isFinite(points)) {
+    return 0;
+  }
+
+  const safeDigits = Math.max(0, Math.floor(digits));
+  const scale = Math.max(1, Math.pow(10, Math.max(0, safeDigits - 4)));
+  return Math.round((Math.abs(points) / scale) * 10000) / 10000;
+}
+
+/**
+ * Converts pips back into price points using the same symbol precision rule.
+ */
+export function pipsToPoints(pips: number, digits = 5): number {
+  if (typeof pips !== 'number' || !Number.isFinite(pips)) {
+    return 0;
+  }
+
+  const safeDigits = Math.max(0, Math.floor(digits));
+  const scale = Math.max(1, Math.pow(10, Math.max(0, safeDigits - 4)));
+  return Math.round((Math.abs(pips) * scale) * 10000) / 10000;
+}
+
+/**
+ * Safe bid-side markup application, matching the requested price feed policy.
+ */
+export function applyBidMarkup(basePrice: number, markupPoints: number, digits: number): number {
+  return applyMarkup(basePrice, markupPoints, digits);
+}
+
+/**
+ * Safe ask-side markup application for bid/ask price streams.
+ */
+export function applyAskMarkup(basePrice: number, markupPoints: number, digits: number): number {
+  return applyMarkup(basePrice, markupPoints, digits);
+}
+
+/**
+ * Price passthrough utility: returns the incoming price unchanged for a safe
+ * source-spread/fill-price feed bypass.
+ */
+export function passthroughPrice(price: number): number {
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+    return 0;
+  }
+  return price;
+}
+
+/**
+ * Decimal-safe rounding helper requested by the project brief for broker price
+ * feeds and order-policy normalization.
+ */
+export function roundDecimal(value: number, digits = 4): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0;
+  }
+
+  const safeDigits = Math.max(0, Math.floor(digits));
+  const scale = Math.pow(10, safeDigits);
+  return Math.round((value + Number.EPSILON) * scale) / scale;
+}
+
+/**
+ * Filter out invalid or non-positive orders before routing, to keep the bridge
+ * and execution layer from sending an unsafe zero or negative trade size.
+ */
+export function normalizeValidLots(lots: number, minimumLots = 0.01): number {
+  if (typeof lots !== 'number' || !Number.isFinite(lots) || lots <= 0) {
+    return 0;
+  }
+
+  if (lots < minimumLots) {
+    return 0;
+  }
+
+  return roundDecimal(lots, 4);
+}
+
+/**
+ * Scale a lot volume back from one destination size to source account size.
+ * This is the inverse of the requested divisor scaling rule.
+ */
+export function scaleVolumeFromDestination(rawLots: number, lotsDivisor: number): number {
+  if (typeof rawLots !== 'number' || !Number.isFinite(rawLots) || rawLots < 0) {
+    return 0;
+  }
+
+  if (typeof lotsDivisor !== 'number' || !Number.isFinite(lotsDivisor) || lotsDivisor <= 0) {
+    return rawLots;
+  }
+
+  return Math.round((rawLots * lotsDivisor + Number.EPSILON) * 10000) / 10000;
+}
