@@ -54,27 +54,64 @@ adminRouter.get('/tenants', async (req: AuthenticatedRequest, res: Response) => 
  * Provision a new tenant and auto-generate subscription licensing.
  */
 adminRouter.post('/tenants', async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Tenant creation payload is required' });
+    return;
+  }
+
   const { companyName, email, maxDestinations, monthlyVolumeLimitLots, durationMonths } = req.body;
 
-  if (!companyName || !email) {
+  if (typeof companyName !== 'string' || !companyName.trim() || typeof email !== 'string' || !email.trim()) {
     res.status(400).json({ error: 'Company Name and Admin Email are required' });
+    return;
+  }
+
+  const normalizedCompanyName = companyName.trim();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (typeof maxDestinations !== 'undefined' && typeof maxDestinations !== 'number' && typeof maxDestinations !== 'string') {
+    res.status(400).json({ error: 'maxDestinations must be a number or numeric string when provided' });
+    return;
+  }
+
+  if (typeof monthlyVolumeLimitLots !== 'undefined' && typeof monthlyVolumeLimitLots !== 'number' && typeof monthlyVolumeLimitLots !== 'string') {
+    res.status(400).json({ error: 'monthlyVolumeLimitLots must be a number or numeric string when provided' });
+    return;
+  }
+
+  if (typeof durationMonths !== 'undefined' && typeof durationMonths !== 'number' && typeof durationMonths !== 'string') {
+    res.status(400).json({ error: 'durationMonths must be a number or numeric string when provided' });
     return;
   }
 
   try {
     const key = generateLicenseKey();
     const expiry = new Date();
-    const months = durationMonths ? parseInt(durationMonths) : 12;
+    const parsedDuration = typeof durationMonths === 'number' ? durationMonths : typeof durationMonths === 'string' && durationMonths.trim() ? parseInt(durationMonths, 10) : 12;
+    const months = Number.isFinite(parsedDuration) ? parsedDuration : 12;
     expiry.setMonth(expiry.getMonth() + months);
+
+    const parsedMaxDestinations = typeof maxDestinations === 'number' ? maxDestinations : typeof maxDestinations === 'string' && maxDestinations.trim() ? parseInt(maxDestinations, 10) : 5;
+    const parsedVolumeLimit = typeof monthlyVolumeLimitLots === 'number' ? monthlyVolumeLimitLots : typeof monthlyVolumeLimitLots === 'string' && monthlyVolumeLimitLots.trim() ? parseFloat(monthlyVolumeLimitLots) : 10000.0;
+
+    if (!Number.isFinite(parsedMaxDestinations) || parsedMaxDestinations < 1) {
+      res.status(400).json({ error: 'maxDestinations must be a positive finite integer' });
+      return;
+    }
+
+    if (!Number.isFinite(parsedVolumeLimit) || parsedVolumeLimit < 0) {
+      res.status(400).json({ error: 'monthlyVolumeLimitLots must be a non-negative finite number' });
+      return;
+    }
 
     const tenant = await prisma.tenant.create({
       data: {
-        companyName,
-        email,
+        companyName: normalizedCompanyName,
+        email: normalizedEmail,
         licenseKey: key,
         status: 'ACTIVE',
-        maxDestinations: maxDestinations ? parseInt(maxDestinations) : 5,
-        monthlyVolumeLimitLots: monthlyVolumeLimitLots ? parseFloat(monthlyVolumeLimitLots) : 10000.0,
+        maxDestinations: parsedMaxDestinations,
+        monthlyVolumeLimitLots: parsedVolumeLimit,
         licenseExpiresAt: expiry,
       },
     });
@@ -84,7 +121,7 @@ adminRouter.post('/tenants', async (req: AuthenticatedRequest, res: Response) =>
       data: {
         eventType: 'TENANT_PROVISION',
         logLevel: 'INFO',
-        message: `Super Admin provisioned new tenant profile "${companyName}" with license ${key}`,
+        message: `Super Admin provisioned new tenant profile "${normalizedCompanyName}" with license ${key}`,
         metadata: { tenantId: tenant.id },
       },
     });
@@ -104,18 +141,79 @@ adminRouter.post('/tenants', async (req: AuthenticatedRequest, res: Response) =>
  * Edit tenant attributes, suspend status, or adjust billing volume limits.
  */
 adminRouter.put('/tenants/:id', async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Tenant update payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (!id || !id.trim()) {
+    res.status(400).json({ error: 'Tenant id is required' });
+    return;
+  }
+
   const { companyName, status, maxDestinations, monthlyVolumeLimitLots, licenseExpiresAt } = req.body;
 
+  if (typeof companyName !== 'undefined' && (typeof companyName !== 'string' || !companyName.trim())) {
+    res.status(400).json({ error: 'companyName must be a non-empty string when supplied' });
+    return;
+  }
+
+  if (typeof status !== 'undefined' && typeof status !== 'string') {
+    res.status(400).json({ error: 'status must be a string when supplied' });
+    return;
+  }
+
+  if (typeof status === 'string' && !['ACTIVE', 'SUSPENDED', 'EXPIRED'].includes(status.trim())) {
+    res.status(400).json({ error: 'status must be ACTIVE, SUSPENDED, or EXPIRED' });
+    return;
+  }
+
+  if (typeof maxDestinations !== 'undefined' && typeof maxDestinations !== 'number' && typeof maxDestinations !== 'string') {
+    res.status(400).json({ error: 'maxDestinations must be a finite number or numeric string when supplied' });
+    return;
+  }
+
+  if (typeof monthlyVolumeLimitLots !== 'undefined' && typeof monthlyVolumeLimitLots !== 'number' && typeof monthlyVolumeLimitLots !== 'string') {
+    res.status(400).json({ error: 'monthlyVolumeLimitLots must be a finite number or numeric string when supplied' });
+    return;
+  }
+
+  if (typeof licenseExpiresAt !== 'undefined' && typeof licenseExpiresAt !== 'string') {
+    res.status(400).json({ error: 'licenseExpiresAt must be an ISO date string when supplied' });
+    return;
+  }
+
   try {
+    const normalizedCompanyName = typeof companyName === 'string' ? companyName.trim() : undefined;
+    const normalizedStatus = typeof status === 'string' && status.trim() ? status.trim() as 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' : undefined;
+    const parsedMaxDestinations = typeof maxDestinations === 'number' ? maxDestinations : typeof maxDestinations === 'string' && maxDestinations.trim() ? parseInt(maxDestinations, 10) : undefined;
+    const parsedVolumeLimit = typeof monthlyVolumeLimitLots === 'number' ? monthlyVolumeLimitLots : typeof monthlyVolumeLimitLots === 'string' && monthlyVolumeLimitLots.trim() ? parseFloat(monthlyVolumeLimitLots) : undefined;
+    const parsedExpiry = typeof licenseExpiresAt === 'string' && licenseExpiresAt.trim() ? new Date(licenseExpiresAt) : undefined;
+
+    if (parsedMaxDestinations !== undefined && (!Number.isFinite(parsedMaxDestinations) || parsedMaxDestinations < 1)) {
+      res.status(400).json({ error: 'maxDestinations must be a positive finite integer' });
+      return;
+    }
+
+    if (parsedVolumeLimit !== undefined && (!Number.isFinite(parsedVolumeLimit) || parsedVolumeLimit < 0)) {
+      res.status(400).json({ error: 'monthlyVolumeLimitLots must be a non-negative finite number' });
+      return;
+    }
+
+    if (parsedExpiry && Number.isNaN(parsedExpiry.getTime())) {
+      res.status(400).json({ error: 'licenseExpiresAt must be a valid ISO date string' });
+      return;
+    }
+
     const updated = await prisma.tenant.update({
       where: { id },
       data: {
-        companyName,
-        status,
-        maxDestinations: maxDestinations ? parseInt(maxDestinations) : undefined,
-        monthlyVolumeLimitLots: monthlyVolumeLimitLots ? parseFloat(monthlyVolumeLimitLots) : undefined,
-        licenseExpiresAt: licenseExpiresAt ? new Date(licenseExpiresAt) : undefined,
+        companyName: normalizedCompanyName,
+        status: normalizedStatus,
+        maxDestinations: parsedMaxDestinations,
+        monthlyVolumeLimitLots: parsedVolumeLimit,
+        licenseExpiresAt: parsedExpiry,
       },
     });
 
@@ -123,7 +221,7 @@ adminRouter.put('/tenants/:id', async (req: AuthenticatedRequest, res: Response)
       data: {
         eventType: 'TENANT_UPDATE',
         logLevel: 'INFO',
-        message: `Super Admin updated details for tenant id ${id} (Status set to: ${status})`,
+        message: `Super Admin updated details for tenant id ${id} (Status set to: ${normalizedStatus ?? updated.status})`,
         metadata: { tenantId: id },
       },
     });
@@ -140,6 +238,11 @@ adminRouter.put('/tenants/:id', async (req: AuthenticatedRequest, res: Response)
  */
 adminRouter.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Response) => {
   const id = String(req.params.id);
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Tenant id is required' });
+    return;
+  }
 
   try {
     const deleted = await prisma.tenant.delete({
@@ -166,6 +269,11 @@ adminRouter.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Respon
  */
 adminRouter.post('/tenants/:id/impersonate', async (req: AuthenticatedRequest, res: Response) => {
   const id = String(req.params.id);
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Tenant id is required' });
+    return;
+  }
 
   try {
     const tenant = await prisma.tenant.findUnique({
