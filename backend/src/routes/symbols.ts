@@ -15,6 +15,15 @@ import { validateLicense } from '../middleware/license';
 import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
+function parseFiniteFloatLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 export const symbolsRouter = Router();
 
 // Apply licensing validation and authentication
@@ -99,16 +108,21 @@ symbolsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticated
       return;
     }
 
+    const normalizedMarkupPoints = parseFiniteFloatLike(markupPoints, 0.0);
+    const normalizedCommissionOverride = parseFiniteFloatLike(commissionOverride, 0.0);
+    const normalizedSwapBuyOverride = parseFiniteFloatLike(swapBuyOverride, 0.0);
+    const normalizedSwapSellOverride = parseFiniteFloatLike(swapSellOverride, 0.0);
+
     const mapping = await prisma.symbolMapping.create({
       data: {
         tenantId,
         destinationId: destinationId.trim(),
         sourceSymbol: sourceSymbol.trim(),
         destinationSymbol: destinationSymbol.trim(),
-        markupPoints: typeof markupPoints === 'string' && markupPoints.trim() ? parseFloat(markupPoints) : 0.0,
-        commissionOverride: typeof commissionOverride === 'string' && commissionOverride.trim() ? parseFloat(commissionOverride) : 0.0,
-        swapBuyOverride: typeof swapBuyOverride === 'string' && swapBuyOverride.trim() ? parseFloat(swapBuyOverride) : 0.0,
-        swapSellOverride: typeof swapSellOverride === 'string' && swapSellOverride.trim() ? parseFloat(swapSellOverride) : 0.0,
+        markupPoints: normalizedMarkupPoints,
+        commissionOverride: normalizedCommissionOverride,
+        swapBuyOverride: normalizedSwapBuyOverride,
+        swapSellOverride: normalizedSwapSellOverride,
         passSourceSpread: typeof passSourceSpread === 'boolean' ? passSourceSpread : true,
         passFillPrice: typeof passFillPrice === 'boolean' ? passFillPrice : false,
       },
@@ -187,14 +201,19 @@ symbolsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticat
         destinationId: typeof destinationId === 'string' && destinationId.trim() ? destinationId.trim() : undefined,
         sourceSymbol: typeof sourceSymbol === 'string' && sourceSymbol.trim() ? sourceSymbol.trim() : undefined,
         destinationSymbol: typeof destinationSymbol === 'string' && destinationSymbol.trim() ? destinationSymbol.trim() : undefined,
-        markupPoints: typeof markupPoints === 'string' && markupPoints.trim() ? parseFloat(markupPoints) : undefined,
-        commissionOverride: typeof commissionOverride === 'string' && commissionOverride.trim() ? parseFloat(commissionOverride) : undefined,
-        swapBuyOverride: typeof swapBuyOverride === 'string' && swapBuyOverride.trim() ? parseFloat(swapBuyOverride) : undefined,
-        swapSellOverride: typeof swapSellOverride === 'string' && swapSellOverride.trim() ? parseFloat(swapSellOverride) : undefined,
+        markupPoints: typeof markupPoints === 'number' || typeof markupPoints === 'string' ? parseFiniteFloatLike(markupPoints, Number.NaN) : undefined,
+        commissionOverride: typeof commissionOverride === 'number' || typeof commissionOverride === 'string' ? parseFiniteFloatLike(commissionOverride, Number.NaN) : undefined,
+        swapBuyOverride: typeof swapBuyOverride === 'number' || typeof swapBuyOverride === 'string' ? parseFiniteFloatLike(swapBuyOverride, Number.NaN) : undefined,
+        swapSellOverride: typeof swapSellOverride === 'number' || typeof swapSellOverride === 'string' ? parseFiniteFloatLike(swapSellOverride, Number.NaN) : undefined,
         passSourceSpread: typeof passSourceSpread === 'boolean' ? passSourceSpread : undefined,
         passFillPrice: typeof passFillPrice === 'boolean' ? passFillPrice : undefined,
       },
     });
+
+    if (!Number.isFinite(updated.markupPoints)) updated.markupPoints = existing.markupPoints;
+    if (!Number.isFinite(updated.commissionOverride)) updated.commissionOverride = existing.commissionOverride;
+    if (!Number.isFinite(updated.swapBuyOverride)) updated.swapBuyOverride = existing.swapBuyOverride;
+    if (!Number.isFinite(updated.swapSellOverride)) updated.swapSellOverride = existing.swapSellOverride;
 
     await prisma.auditLog.create({
       data: {
