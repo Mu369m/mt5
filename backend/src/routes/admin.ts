@@ -534,8 +534,8 @@ adminRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response) 
   const limitValue = req.query.limit ?? '50';
   const searchValue = req.query.search ?? '';
 
-  if (typeof pageValue !== 'string' || typeof limitValue !== 'string' || typeof searchValue !== 'string') {
-    res.status(400).json({ error: 'page, limit, and search query values must be strings' });
+  if (Array.isArray(pageValue) || Array.isArray(limitValue) || Array.isArray(searchValue) || typeof pageValue !== 'string' || typeof limitValue !== 'string' || typeof searchValue !== 'string') {
+    res.status(400).json({ error: 'page, limit, and search query values must be scalar strings' });
     return;
   }
 
