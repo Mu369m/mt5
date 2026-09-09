@@ -6,14 +6,19 @@ import {
   DEFAULT_TENANT_DEFAULTS,
   DEFAULT_MODULE_VISIBILITY,
   DEFAULT_CMS_CONTENT,
+  type FeatureFlags,
+  type FeeConfig,
+  type TenantDefaults,
+  type ModuleVisibility,
+  type CmsContent,
 } from '@workspace/shared';
 
 const TenantAdmin: React.FC = () => {
-  const [featureFlags, setFeatureFlags] = useState(DEFAULT_FEATURE_FLAGS);
-  const [feeConfig, setFeeConfig] = useState(DEFAULT_FEE_CONFIG);
-  const [tenantDefaults, setTenantDefaults] = useState(DEFAULT_TENANT_DEFAULTS);
-  const [moduleVisibility, setModuleVisibility] = useState(DEFAULT_MODULE_VISIBILITY);
-  const [cmsContent, setCmsContent] = useState(DEFAULT_CMS_CONTENT);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS as FeatureFlags);
+  const [feeConfig, setFeeConfig] = useState<FeeConfig>(DEFAULT_FEE_CONFIG as FeeConfig);
+  const [tenantDefaults, setTenantDefaults] = useState<TenantDefaults>(DEFAULT_TENANT_DEFAULTS as TenantDefaults);
+  const [moduleVisibility, setModuleVisibility] = useState<ModuleVisibility>(DEFAULT_MODULE_VISIBILITY as ModuleVisibility);
+  const [cmsContent, setCmsContent] = useState<CmsContent>(DEFAULT_CMS_CONTENT as CmsContent);
 
   const [lpRows, setLpRows] = useState([
     { brokerName: 'FXPrime MT5', accountLabel: 'LP-001', serverIp: '10.0.8.12', port: 443, loginId: '772100', mode: 'FIX', enabled: true, markup: 1.4, fee: 0.1 },
