@@ -331,8 +331,22 @@ adminRouter.post('/tenants/:id/impersonate', async (req: AuthenticatedRequest, r
  * Instantly suspend tenant license and disable all LP forwarding (<1ms flag update).
  */
 adminRouter.post('/tenants/:id/kill-switch', async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Kill-switch payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Tenant id is required' });
+    return;
+  }
+
   const { suspend = true } = req.body;
+  if (typeof suspend !== 'boolean') {
+    res.status(400).json({ error: 'Suspend must be provided as a boolean' });
+    return;
+  }
 
   try {
     const tenant = await prisma.tenant.update({
@@ -405,7 +419,22 @@ adminRouter.get('/settings', async (req: AuthenticatedRequest, res: Response) =>
  * Edit CMS values and inject fresh CSS variables.
  */
 adminRouter.post('/settings', async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Settings payload is required' });
+    return;
+  }
+
   const { themeConfig, brandingConfig } = req.body;
+
+  if (typeof themeConfig !== 'undefined' && (typeof themeConfig !== 'object' || Array.isArray(themeConfig) || !themeConfig)) {
+    res.status(400).json({ error: 'themeConfig must be an object when supplied' });
+    return;
+  }
+
+  if (typeof brandingConfig !== 'undefined' && (typeof brandingConfig !== 'object' || Array.isArray(brandingConfig) || !brandingConfig)) {
+    res.status(400).json({ error: 'brandingConfig must be an object when supplied' });
+    return;
+  }
 
   try {
     const existing = await prisma.globalSiteSettings.findFirst();
@@ -501,16 +530,30 @@ adminRouter.get('/telemetry', async (req: AuthenticatedRequest, res: Response) =
  * Fetch paginated system-wide trade/audit trails.
  */
 adminRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response) => {
-  const { page = '1', limit = '50', search = '' } = req.query;
-  const pageInt = parseInt(page as string);
-  const limitInt = parseInt(limit as string);
+  const pageValue = req.query.page ?? '1';
+  const limitValue = req.query.limit ?? '50';
+  const searchValue = req.query.search ?? '';
+
+  if (typeof pageValue !== 'string' || typeof limitValue !== 'string' || typeof searchValue !== 'string') {
+    res.status(400).json({ error: 'page, limit, and search query values must be strings' });
+    return;
+  }
+
+  const pageInt = Number.parseInt(pageValue.trim(), 10);
+  const limitInt = Number.parseInt(limitValue.trim(), 10);
+  const search = searchValue.trim();
+
+  if (!Number.isInteger(pageInt) || pageInt < 1 || !Number.isInteger(limitInt) || limitInt < 1 || limitInt > 200) {
+    res.status(400).json({ error: 'page must be a positive integer and limit must be a positive integer up to 200' });
+    return;
+  }
 
   try {
     const where: any = {};
     if (search) {
       where.OR = [
-        { message: { contains: search as string, mode: 'insensitive' } },
-        { eventType: { contains: search as string, mode: 'insensitive' } },
+        { message: { contains: search, mode: 'insensitive' } },
+        { eventType: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -525,7 +568,7 @@ adminRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response) 
     ]);
 
     res.status(200).json({
-      logs: logs.map(l => ({ ...l, id: l.id.toString() })), // Convert BigInt to String
+      logs: logs.map(l => ({ ...l, id: l.id.toString() })),
       total,
       page: pageInt,
       totalPages: Math.ceil(total / limitInt),
@@ -540,12 +583,19 @@ adminRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response) 
  * Broadcast administrative alert banners onto active client dashboards.
  */
 adminRouter.post('/broadcast', async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Broadcast payload is required' });
+    return;
+  }
+
   const { bannerText } = req.body;
 
-  if (!bannerText) {
+  if (typeof bannerText !== 'string' || !bannerText.trim()) {
     res.status(400).json({ error: 'Banner announcement text is required' });
     return;
   }
+
+  const cleanBannerText = bannerText.trim();
 
   try {
     // Audit write representing a broadcast event
@@ -553,12 +603,12 @@ adminRouter.post('/broadcast', async (req: AuthenticatedRequest, res: Response) 
       data: {
         eventType: 'SYSTEM_BROADCAST',
         logLevel: 'INFO',
-        message: `SUPER_ADMIN broadcast announcement: "${bannerText}"`,
-        metadata: { broadcast: bannerText },
+        message: `SUPER_ADMIN broadcast announcement: "${cleanBannerText}"`,
+        metadata: { broadcast: cleanBannerText },
       },
     });
 
-    res.status(200).json({ message: 'Broadcast recorded successfully', text: bannerText });
+    res.status(200).json({ message: 'Broadcast recorded successfully', text: cleanBannerText });
   } catch (error) {
     res.status(500).json({ error: 'Failed to record system broadcast message' });
   }
