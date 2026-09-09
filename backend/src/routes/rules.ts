@@ -53,6 +53,12 @@ rulesRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
  */
 rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Routing rule payload is required' });
+    return;
+  }
+
   const {
     destinationId,
     ruleName,
@@ -65,7 +71,7 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
     forceMt5Flags,
   } = req.body;
 
-  if (!destinationId || !ruleName || !sourceMt5Group) {
+  if (typeof destinationId !== 'string' || !destinationId.trim() || typeof ruleName !== 'string' || !ruleName.trim() || typeof sourceMt5Group !== 'string' || !sourceMt5Group.trim()) {
     res.status(400).json({ error: 'Destination, Rule Name and Source MT5 Group are required' });
     return;
   }
@@ -73,7 +79,7 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
   try {
     // Confirm destination belongs to the same tenant
     const dest = await prisma.lpDestination.findFirst({
-      where: { id: destinationId, tenantId },
+      where: { id: destinationId.trim(), tenantId },
     });
 
     if (!dest) {
@@ -84,9 +90,9 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
     const rule = await prisma.routingRule.create({
       data: {
         tenantId,
-        destinationId,
-        ruleName,
-        sourceMt5Group,
+        destinationId: destinationId.trim(),
+        ruleName: ruleName.trim(),
+        sourceMt5Group: sourceMt5Group.trim(),
         executionMode: executionMode || 'COPIER',
         priority: priority ? parseInt(priority) : 1,
         isEnabled: isEnabled !== false,
@@ -99,10 +105,10 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
     await prisma.auditLog.create({
       data: {
         tenantId,
-        destinationId,
+        destinationId: destinationId.trim(),
         eventType: 'RULE_CREATE',
         logLevel: 'INFO',
-        message: `Tenant created routing rule "${ruleName}" mapping group "${sourceMt5Group}" to "${dest.accountLabel}"`,
+        message: `Tenant created routing rule "${ruleName.trim()}" mapping group "${sourceMt5Group.trim()}" to "${dest.accountLabel}"`,
       },
     });
 
@@ -119,7 +125,18 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
  */
 rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Routing rule update payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Routing rule id is required' });
+    return;
+  }
+
   const {
     destinationId,
     ruleName,
@@ -142,9 +159,9 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
       return;
     }
 
-    if (destinationId) {
+    if (typeof destinationId === 'string' && destinationId.trim()) {
       const dest = await prisma.lpDestination.findFirst({
-        where: { id: destinationId, tenantId },
+        where: { id: destinationId.trim(), tenantId },
       });
       if (!dest) {
         res.status(404).json({ error: 'Target connection destination not found' });
@@ -152,18 +169,20 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
       }
     }
 
+    const executionModeValue = executionMode === 'COPIER' || executionMode === 'DEALER_ONLY' ? executionMode : undefined;
+
     const updated = await prisma.routingRule.update({
       where: { id },
       data: {
-        destinationId,
-        ruleName,
-        sourceMt5Group,
-        executionMode,
-        priority: priority ? parseInt(priority) : undefined,
-        isEnabled,
-        minLot: minLot ? parseFloat(minLot) : undefined,
-        maxLot: maxLot ? parseFloat(maxLot) : undefined,
-        forceMt5Flags: forceMt5Flags ? parseInt(forceMt5Flags) : undefined,
+        destinationId: typeof destinationId === 'string' && destinationId.trim() ? destinationId.trim() : undefined,
+        ruleName: typeof ruleName === 'string' && ruleName.trim() ? ruleName.trim() : undefined,
+        sourceMt5Group: typeof sourceMt5Group === 'string' && sourceMt5Group.trim() ? sourceMt5Group.trim() : undefined,
+        executionMode: executionModeValue,
+        priority: typeof priority === 'string' && priority.trim() ? parseInt(priority) : undefined,
+        isEnabled: typeof isEnabled === 'boolean' ? isEnabled : undefined,
+        minLot: typeof minLot === 'string' && minLot.trim() ? parseFloat(minLot) : undefined,
+        maxLot: typeof maxLot === 'string' && maxLot.trim() ? parseFloat(maxLot) : undefined,
+        forceMt5Flags: typeof forceMt5Flags === 'string' && forceMt5Flags.trim() ? parseInt(forceMt5Flags) : undefined,
       },
     });
 
@@ -190,6 +209,11 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
 rulesRouter.delete('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
   const id = String(req.params.id);
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Routing rule id is required' });
+    return;
+  }
 
   try {
     const existing = await prisma.routingRule.findFirst({
