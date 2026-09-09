@@ -11,6 +11,30 @@
 import prisma from './db';
 import { selectBestSlippageDestination } from './smart-routing';
 
+function assertValidTenantId(tenantId: string): void {
+  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+    throw new Error('Tenant context is required');
+  }
+}
+
+function assertValidSourceGroup(sourceGroup: string): void {
+  if (typeof sourceGroup !== 'string' || !sourceGroup.trim()) {
+    throw new Error('Source group is required');
+  }
+}
+
+function assertValidLots(lots: number): void {
+  if (!Number.isFinite(lots) || lots <= 0) {
+    throw new Error('Lots must be a positive finite number');
+  }
+}
+
+function assertValidSymbol(symbol: string): void {
+  if (typeof symbol !== 'string' || !symbol.trim()) {
+    throw new Error('Symbol is required');
+  }
+}
+
 export interface RouteResolution {
   destinationId: string;
   ruleId: string;
@@ -33,6 +57,11 @@ export async function resolveDestinationForGroup(
   lots: number,
   symbol = 'EURUSD'
 ): Promise<RouteResolution | null> {
+  assertValidTenantId(tenantId);
+  assertValidSourceGroup(sourceGroup);
+  assertValidLots(lots);
+  assertValidSymbol(symbol);
+
   const rules = await prisma.routingRule.findMany({
     where: {
       tenantId,

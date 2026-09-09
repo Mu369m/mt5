@@ -84,3 +84,11 @@ test('smart routing rejects malformed telemetry and toxic-flow signatures before
   assert.equal(selectBestSlippageDestination('', ['D1']), null);
   assert.equal(selectBestSlippageDestination('EURUSD', []), null);
 });
+
+test('router rejects malformed rule-resolution inputs before scanning Prisma routing rules', async () => {
+  const { resolveDestinationForGroup } = require('../mt-bridge/dist/router.js');
+  await assert.rejects(() => resolveDestinationForGroup('', 'JK1\\1A\\G-fwd', 1, 'EURUSD'), /Tenant context is required/);
+  await assert.rejects(() => resolveDestinationForGroup('tenant-id', '', 1, 'EURUSD'), /Source group is required/);
+  await assert.rejects(() => resolveDestinationForGroup('tenant-id', 'JK1\\1A\\G-fwd', 0, 'EURUSD'), /Lots must be a positive finite number/);
+  await assert.rejects(() => resolveDestinationForGroup('tenant-id', 'JK1\\1A\\G-fwd', 1, ''), /Symbol is required/);
+});
