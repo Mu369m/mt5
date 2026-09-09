@@ -24,6 +24,36 @@ const executionHistory = new Map<string, SlippageRecord[]>();
 // In-memory rate-limiter tracker for toxic flow detection: Map<SourceGroup, number[]> (timestamps of recent trades)
 const tradeActivityTracker = new Map<string, number[]>();
 
+function assertValidSymbol(symbol: string): void {
+  if (typeof symbol !== 'string' || !symbol.trim()) {
+    throw new Error('Symbol is required');
+  }
+}
+
+function assertValidDestinationId(destinationId: string): void {
+  if (typeof destinationId !== 'string' || !destinationId.trim()) {
+    throw new Error('Destination id is required');
+  }
+}
+
+function assertValidSlippage(slippagePoints: number): void {
+  if (!Number.isFinite(slippagePoints)) {
+    throw new Error('Slippage points must be a finite number');
+  }
+}
+
+function assertValidSourceGroup(sourceGroup: string): void {
+  if (typeof sourceGroup !== 'string' || !sourceGroup.trim()) {
+    throw new Error('Source group is required');
+  }
+}
+
+function assertValidLots(lots: number): void {
+  if (!Number.isFinite(lots) || lots <= 0) {
+    throw new Error('Lots must be a positive finite number');
+  }
+}
+
 /**
  * Feeds a completed trade execution metrics back into the AI router memory database.
  * 
@@ -38,10 +68,17 @@ export function recordExecutionMetrics(
   slippagePoints: number,
   latencyMs: number
 ): void {
-  let records = executionHistory.get(symbol);
+  assertValidSymbol(symbol);
+  assertValidDestinationId(destinationId);
+  assertValidSlippage(slippagePoints);
+  if (!Number.isFinite(latencyMs) || latencyMs < 0) {
+    throw new Error('Latency ms must be a finite non-negative number');
+  }
+
+  let records = executionHistory.get(symbol.trim().toUpperCase());
   if (!records) {
     records = [];
-    executionHistory.set(symbol, records);
+    executionHistory.set(symbol.trim().toUpperCase(), records);
   }
 
   // Push fresh stats and keep history capped to last 100 entries per symbol to limit RAM usage
@@ -66,11 +103,15 @@ export function recordExecutionMetrics(
  * @returns The recommended destination ID offering the cleanest pricing.
  */
 export function selectBestSlippageDestination(symbol: string, candidateDestIds: string[]): string | null {
-  if (!candidateDestIds || candidateDestIds.length === 0) {
+  if (typeof symbol !== 'string' || !symbol.trim()) {
     return null;
   }
 
-  const records = executionHistory.get(symbol);
+  if (!Array.isArray(candidateDestIds) || candidateDestIds.length === 0) {
+    return null;
+  }
+
+  const records = executionHistory.get(symbol.trim().toUpperCase());
   if (!records || records.length === 0) {
     // No historical records; fall back to the first available routing candidate
     return candidateDestIds[0];
@@ -119,8 +160,11 @@ export function selectBestSlippageDestination(symbol: string, candidateDestIds: 
  * @returns The latency duration in ms to inject as a guard (0 if flow is safe).
  */
 export function assessToxicFlowAndCalculateDelay(sourceGroup: string, lots: number): { isToxic: boolean; delayMs: number } {
+  assertValidSourceGroup(sourceGroup);
+  assertValidLots(lots);
+
   const now = Date.now();
-  let timestamps = tradeActivityTracker.get(sourceGroup) || [];
+  let timestamps = tradeActivityTracker.get(sourceGroup.trim()) || [];
 
   // Filter timestamps to the last 2 seconds
   timestamps = timestamps.filter(ts => now - ts <= 2000);

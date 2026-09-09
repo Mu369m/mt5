@@ -73,3 +73,14 @@ test('risk engine rejects malformed flow profile and execution config before rou
   assert.equal(calculateCopyLots({ lotSizingMode: 'FIXED', fixedLots: 1 }, 0, 100, 100), 0);
   assert.deepEqual(evaluateTrade({}, 'EURUSD', 'BUY', 1, 'B_BOOK', 0), { allowed: false, reason: 'Invalid execution config', direction: 'BUY', volumeLots: 1, book: 'B_BOOK' });
 });
+
+test('smart routing rejects malformed telemetry and toxic-flow signatures before route scoring', () => {
+  const { recordExecutionMetrics, selectBestSlippageDestination, assessToxicFlowAndCalculateDelay } = require('../mt-bridge/dist/smart-routing.js');
+  assert.throws(() => recordExecutionMetrics('', 'D1', 1, 1), /Symbol is required/);
+  assert.throws(() => recordExecutionMetrics('EURUSD', '', 1, 1), /Destination id is required/);
+  assert.throws(() => recordExecutionMetrics('EURUSD', 'D1', NaN, 1), /Slippage points must be a finite number/);
+  assert.throws(() => assessToxicFlowAndCalculateDelay('', 1), /Source group is required/);
+  assert.throws(() => assessToxicFlowAndCalculateDelay('G1', 0), /Lots must be a positive finite number/);
+  assert.equal(selectBestSlippageDestination('', ['D1']), null);
+  assert.equal(selectBestSlippageDestination('EURUSD', []), null);
+});
