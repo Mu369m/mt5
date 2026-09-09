@@ -215,6 +215,56 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
     return;
   }
 
+  if (typeof event.direction !== 'string' || !['BUY', 'SELL'].includes(event.direction.trim())) {
+    res.status(400).json({ error: 'direction must be BUY or SELL' });
+    return;
+  }
+
+  if (typeof event.volumeLots !== 'number' && typeof event.volumeLots !== 'string') {
+    res.status(400).json({ error: 'volumeLots must be a finite number or numeric string' });
+    return;
+  }
+
+  const numericVolume = typeof event.volumeLots === 'number' ? event.volumeLots : Number.parseFloat(event.volumeLots);
+  if (!Number.isFinite(numericVolume) || numericVolume <= 0) {
+    res.status(400).json({ error: 'volumeLots must be a positive finite number' });
+    return;
+  }
+
+  const safePrice = typeof event.price === 'number' ? event.price : typeof event.price === 'string' && event.price.trim() ? Number.parseFloat(event.price) : undefined;
+  if (typeof event.price === 'string' && event.price.trim() && (!Number.isFinite(safePrice) || safePrice === undefined)) {
+    res.status(400).json({ error: 'price must be a finite number when provided' });
+    return;
+  }
+
+  const safeStopLoss = typeof event.stopLoss === 'number' ? event.stopLoss : typeof event.stopLoss === 'string' && event.stopLoss.trim() ? Number.parseFloat(event.stopLoss) : undefined;
+  if (typeof event.stopLoss === 'string' && event.stopLoss.trim() && (!Number.isFinite(safeStopLoss) || safeStopLoss === undefined)) {
+    res.status(400).json({ error: 'stopLoss must be a finite number when provided' });
+    return;
+  }
+
+  const safeTakeProfit = typeof event.takeProfit === 'number' ? event.takeProfit : typeof event.takeProfit === 'string' && event.takeProfit.trim() ? Number.parseFloat(event.takeProfit) : undefined;
+  if (typeof event.takeProfit === 'string' && event.takeProfit.trim() && (!Number.isFinite(safeTakeProfit) || safeTakeProfit === undefined)) {
+    res.status(400).json({ error: 'takeProfit must be a finite number when provided' });
+    return;
+  }
+
+  const safeCloseVolumeLots = typeof event.closeVolumeLots === 'number' ? event.closeVolumeLots : typeof event.closeVolumeLots === 'string' && event.closeVolumeLots.trim() ? Number.parseFloat(event.closeVolumeLots) : undefined;
+  if (typeof event.closeVolumeLots === 'string' && event.closeVolumeLots.trim() && (!Number.isFinite(safeCloseVolumeLots) || safeCloseVolumeLots === undefined)) {
+    res.status(400).json({ error: 'closeVolumeLots must be a finite number when provided' });
+    return;
+  }
+
+  if (typeof event.occurredAt !== 'undefined' && typeof event.occurredAt !== 'string') {
+    res.status(400).json({ error: 'occurredAt must be an ISO date string when provided' });
+    return;
+  }
+
+  if (typeof event.occurredAt === 'string' && event.occurredAt.trim() && Number.isNaN(new Date(event.occurredAt).getTime())) {
+    res.status(400).json({ error: 'occurredAt must be a valid ISO date string when provided' });
+    return;
+  }
+
   const existing = await prisma.copierEvent.findFirst({ where: { tenantId, eventId: event.eventId.trim() } });
   if (existing) {
     res.status(200).json({ event: existing, status: 'DUPLICATE' satisfies CopierEventStatus });
@@ -229,12 +279,12 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
       masterTicket: event.masterTicket.trim(),
       eventType: event.eventType,
       symbol: event.symbol.trim(),
-      direction: event.direction,
-      volumeLots: event.volumeLots,
-      price: event.price,
-      stopLoss: event.stopLoss,
-      takeProfit: event.takeProfit,
-      closeVolumeLots: event.closeVolumeLots,
+      direction: event.direction.trim() as 'BUY' | 'SELL',
+      volumeLots: numericVolume,
+      price: safePrice,
+      stopLoss: safeStopLoss,
+      takeProfit: safeTakeProfit,
+      closeVolumeLots: safeCloseVolumeLots,
       occurredAt: new Date(event.occurredAt || Date.now()),
     },
   });
