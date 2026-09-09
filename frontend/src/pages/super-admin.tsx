@@ -557,6 +557,177 @@ export const SuperAdmin: React.FC = () => {
                 Compile and Publish layout
               </button>
             </div>
+
+            <div className="border-t border-white/5 pt-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-accent-cyan" />
+                <h3 className="text-xs font-bold tracking-widest font-mono text-slate-400 uppercase">GLOBAL DYNAMIC SETTINGS MATRIX</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="glass-panel p-4 bg-black/20 rounded-custom border border-white/5">
+                  <h4 className="text-[10px] font-bold tracking-widest font-mono text-slate-300 uppercase">Feature Flags</h4>
+                  <div className="mt-3 space-y-2">
+                    {Object.entries(settings.featureFlags || DEFAULT_FEATURE_FLAGS).map(([key, value]) => (
+                      <label key={key} className="flex items-center justify-between gap-3 text-[10px] font-mono text-slate-300">
+                        <span className="capitalize">{key}</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(value)}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            featureFlags: { ...(settings.featureFlags || DEFAULT_FEATURE_FLAGS), [key]: e.target.checked }
+                          })}
+                          className="accent-accent-cyan"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="glass-panel p-4 bg-black/20 rounded-custom border border-white/5">
+                  <h4 className="text-[10px] font-bold tracking-widest font-mono text-slate-300 uppercase">Module Visibility</h4>
+                  <div className="mt-3 space-y-2">
+                    {Object.entries(settings.moduleVisibility || DEFAULT_MODULE_VISIBILITY).map(([key, value]) => (
+                      <label key={key} className="flex items-center justify-between gap-3 text-[10px] font-mono text-slate-300">
+                        <span className="capitalize">{key}</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(value)}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            moduleVisibility: { ...(settings.moduleVisibility || DEFAULT_MODULE_VISIBILITY), [key]: e.target.checked }
+                          })}
+                          className="accent-accent-cyan"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="glass-panel p-4 bg-black/20 rounded-custom border border-white/5">
+                  <h4 className="text-[10px] font-bold tracking-widest font-mono text-slate-300 uppercase">Fee & Treasury</h4>
+                  <div className="mt-3 space-y-3">
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Broker Fee / Lot</span>
+                      <input
+                        type="number"
+                        value={settings.feeConfig?.brokerFeePerLot ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          feeConfig: { ...(settings.feeConfig || DEFAULT_FEE_CONFIG), brokerFeePerLot: Number(e.target.value) }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Rebate %</span>
+                      <input
+                        type="number"
+                        value={settings.feeConfig?.rebatePercent ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          feeConfig: { ...(settings.feeConfig || DEFAULT_FEE_CONFIG), rebatePercent: Number(e.target.value) }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Wallet Limit</span>
+                      <input
+                        type="number"
+                        value={settings.feeConfig?.maxMonthlyWalletLimit ?? 100000}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          feeConfig: { ...(settings.feeConfig || DEFAULT_FEE_CONFIG), maxMonthlyWalletLimit: Number(e.target.value) }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="glass-panel p-4 bg-black/20 rounded-custom border border-white/5">
+                  <h4 className="text-[10px] font-bold tracking-widest font-mono text-slate-300 uppercase">Tenant Defaults</h4>
+                  <div className="mt-3 space-y-3">
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Max Destinations</span>
+                      <input
+                        type="number"
+                        value={settings.tenantDefaults?.maxDestinations ?? 5}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          tenantDefaults: { ...(settings.tenantDefaults || DEFAULT_TENANT_DEFAULTS), maxDestinations: Number(e.target.value) }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Monthly Lot Limit</span>
+                      <input
+                        type="number"
+                        value={settings.tenantDefaults?.monthlyVolumeLimitLots ?? 10000}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          tenantDefaults: { ...(settings.tenantDefaults || DEFAULT_TENANT_DEFAULTS), monthlyVolumeLimitLots: Number(e.target.value) }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Default Currency</span>
+                      <input
+                        type="text"
+                        value={settings.tenantDefaults?.currency ?? 'USD'}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          tenantDefaults: { ...(settings.tenantDefaults || DEFAULT_TENANT_DEFAULTS), currency: e.target.value }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input uppercase"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="glass-panel p-4 bg-black/20 rounded-custom border border-white/5 md:col-span-2">
+                  <h4 className="text-[10px] font-bold tracking-widest font-mono text-slate-300 uppercase">CMS Copy & CSS</h4>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Landing Page Copy</span>
+                      <input
+                        type="text"
+                        value={settings.cmsContent?.landingPageCopy ?? ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          cmsContent: { ...(settings.cmsContent || DEFAULT_CMS_CONTENT), landingPageCopy: e.target.value }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-mono text-slate-400">Meta Description</span>
+                      <input
+                        type="text"
+                        value={settings.cmsContent?.metaDescription ?? ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          cmsContent: { ...(settings.cmsContent || DEFAULT_CMS_CONTENT), metaDescription: e.target.value }
+                        })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input"
+                      />
+                    </label>
+                    <label className="block md:col-span-2">
+                      <span className="text-[10px] font-mono text-slate-400">Custom CSS</span>
+                      <textarea
+                        value={settings.customCss ?? ''}
+                        onChange={(e) => setSettings({ ...settings, customCss: e.target.value })}
+                        className="w-full mt-1 py-2 px-3 text-xs glass-input font-mono min-h-[110px]"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Interactive CSS preview (Col 3) */}
