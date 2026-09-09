@@ -37,8 +37,8 @@ function assertValidDestinationId(destinationId: string): void {
 }
 
 function assertValidSlippage(slippagePoints: number): void {
-  if (!Number.isFinite(slippagePoints)) {
-    throw new Error('Slippage points must be a finite number');
+  if (!Number.isFinite(slippagePoints) || slippagePoints < 0) {
+    throw new Error('Slippage points must be a finite non-negative number');
   }
 }
 
@@ -111,6 +111,12 @@ export function selectBestSlippageDestination(symbol: string, candidateDestIds: 
     return null;
   }
 
+  if (!candidateDestIds.every((destinationId) => typeof destinationId === 'string' && destinationId.trim().length > 0)) {
+    return null;
+  }
+
+  const sanitizedDestIds = candidateDestIds.map((destinationId) => destinationId.trim());
+
   const records = executionHistory.get(symbol.trim().toUpperCase());
   if (!records || records.length === 0) {
     // No historical records; fall back to the first available routing candidate
@@ -122,7 +128,7 @@ export function selectBestSlippageDestination(symbol: string, candidateDestIds: 
   const sums = new Map<string, { totalPoints: number; count: number }>();
 
   for (const r of records) {
-    if (r.timestamp >= fifteenMinutesAgo && candidateDestIds.includes(r.destinationId)) {
+    if (r.timestamp >= fifteenMinutesAgo && sanitizedDestIds.includes(r.destinationId)) {
       const entry = sums.get(r.destinationId) || { totalPoints: 0, count: 0 };
       entry.totalPoints += r.slippagePoints;
       entry.count += 1;
@@ -130,10 +136,10 @@ export function selectBestSlippageDestination(symbol: string, candidateDestIds: 
     }
   }
 
-  let bestDestId = candidateDestIds[0];
+  let bestDestId = sanitizedDestIds[0];
   let lowestAverage = Infinity;
 
-  for (const destId of candidateDestIds) {
+  for (const destId of sanitizedDestIds) {
     const entry = sums.get(destId);
     if (entry && entry.count > 0) {
       const avg = entry.totalPoints / entry.count;

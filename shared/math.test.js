@@ -80,7 +80,7 @@ test('smart routing rejects malformed telemetry and toxic-flow signatures before
   const { recordExecutionMetrics, selectBestSlippageDestination, assessToxicFlowAndCalculateDelay } = require('../mt-bridge/dist/smart-routing.js');
   assert.throws(() => recordExecutionMetrics('', 'D1', 1, 1), /Symbol is required/);
   assert.throws(() => recordExecutionMetrics('EURUSD', '', 1, 1), /Destination id is required/);
-  assert.throws(() => recordExecutionMetrics('EURUSD', 'D1', NaN, 1), /Slippage points must be a finite number/);
+  assert.throws(() => recordExecutionMetrics('EURUSD', 'D1', NaN, 1), /Slippage points must be a finite non-negative number/);
   assert.throws(() => assessToxicFlowAndCalculateDelay('', 1), /Source group is required/);
   assert.throws(() => assessToxicFlowAndCalculateDelay('G1', 0), /Lots must be a positive finite number/);
   assert.equal(selectBestSlippageDestination('', ['D1']), null);
