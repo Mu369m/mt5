@@ -25,6 +25,25 @@ export const Login: React.FC = () => {
   const [, setLocation] = useLocation();
   const { loadBrandingAndTheme } = useTheme();
 
+  const handleDirectLogin = async (role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_VIEWER' = 'SUPER_ADMIN') => {
+    localStorage.setItem('brp_token', 'frontend-dev-direct-login');
+    localStorage.setItem('brp_user', JSON.stringify({
+      email: 'dev-direct@local.preview',
+      role,
+      companyName: role === 'SUPER_ADMIN' ? 'Super Admin Workspace' : 'Demo Workspace',
+      licenseKey: 'DEMO-PREVIEW',
+    }));
+
+    await loadBrandingAndTheme();
+
+    if (role === 'SUPER_ADMIN') {
+      setLocation('/super-admin');
+      return;
+    }
+
+    setLocation('/');
+  };
+
   const handleDemoPreview = () => {
     localStorage.setItem('brp_token', 'frontend-demo-preview');
     localStorage.setItem('brp_user', JSON.stringify({
@@ -151,8 +170,24 @@ export const Login: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => handleDirectLogin('SUPER_ADMIN')}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-custom border border-accent-cyan/70 py-2.5 text-xs font-mono font-bold tracking-wider text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-[#0B0E14]"
+        >
+          <Eye className="h-4 w-4" /> DIRECT LOGIN — SUPER ADMIN
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleDirectLogin('TENANT_ADMIN')}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+        >
+          <Eye className="h-4 w-4" /> DIRECT LOGIN — TENANT ADMIN
+        </button>
+
+        <button
+          type="button"
           onClick={handleDemoPreview}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
         >
           <Eye className="h-4 w-4" /> VIEW DEMO WITHOUT LOGIN
         </button>
