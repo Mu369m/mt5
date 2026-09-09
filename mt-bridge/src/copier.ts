@@ -152,6 +152,13 @@ export async function reconcilePositions(
   slaveConnectionId: string,
   expected: PositionSnapshot[],
 ): Promise<{ matched: number; missing: PositionSnapshot[] }> {
+  if (typeof slaveConnectionId !== 'string' || !slaveConnectionId.trim()) {
+    throw new Error('Slave connection id is required');
+  }
+  if (!Array.isArray(expected) || expected.length === 0) {
+    throw new Error('Expected positions must be a non-empty array');
+  }
+
   const adapter = adapters.get(slaveConnectionId);
   if (!adapter) throw new Error('Slave connection is not registered');
   const actual = await adapter.snapshot();

@@ -130,3 +130,9 @@ test('copier rejects malformed event and heartbeat payloads before dispatching i
 
   assert.throws(() => recordHeartbeat({ connectionId: '', sentAt: '2026-09-09T00:00:00.000Z' }), /Connection id is required/);
 });
+
+test('copier reconciliation refuses blank connection identifiers and empty snapshot inventories before looking up a connected slave adapter', async () => {
+  const { reconcilePositions } = require('../mt-bridge/dist/copier.js');
+  await assert.rejects(() => reconcilePositions('', []), /Slave connection id is required/);
+  await assert.rejects(() => reconcilePositions('slave-1', []), /Expected positions must be a non-empty array/);
+});
