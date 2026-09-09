@@ -194,10 +194,39 @@ export class UnavailableTradingDestinationAdapter implements TradingDestinationA
   }
 }
 
+export class InMemoryTradingDestinationRegistry {
+  private readonly adapters = new Map<string, TradingDestinationAdapter>();
+
+  register(adapter: TradingDestinationAdapter, key = adapter.mode): void {
+    this.adapters.set(key, adapter);
+  }
+
+  unregister(key: string): void {
+    this.adapters.delete(key);
+  }
+
+  hasLiveAdapter(): boolean {
+    return Array.from(this.adapters.values()).some((adapter) => adapter.liveEnabled);
+  }
+
+  getLiveAdapter(): TradingDestinationAdapter | undefined {
+    const live = Array.from(this.adapters.values()).find((adapter) => adapter.liveEnabled);
+    return live;
+  }
+
+  get(key: string): TradingDestinationAdapter | undefined {
+    return this.adapters.get(key);
+  }
+}
+
 export function createSandboxTradingDestinationAdapter(): TradingDestinationAdapter {
   return new SandboxTradingDestinationAdapter();
 }
 
 export function createUnavailableTradingDestinationAdapter(): TradingDestinationAdapter {
   return new UnavailableTradingDestinationAdapter();
+}
+
+export function createTradingDestinationRegistry(): InMemoryTradingDestinationRegistry {
+  return new InMemoryTradingDestinationRegistry();
 }
