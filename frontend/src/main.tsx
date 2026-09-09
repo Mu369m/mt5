@@ -91,6 +91,12 @@ const RootApp = () => {
           <Route path="/super-admin">
             <SuperAdminGuard component={SuperAdmin} />
           </Route>
+          <Route path="/settings/branding">
+            <SuperAdminGuard component={SuperAdmin} />
+          </Route>
+          <Route path="/settings/system">
+            <SuperAdminGuard component={SuperAdmin} />
+          </Route>
 
           {/* Catch-all fallback redirect */}
           <Route>

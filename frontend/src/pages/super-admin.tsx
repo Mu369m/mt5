@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { 
   Users, 
   Paintbrush, 
@@ -41,8 +42,21 @@ interface Tenant {
 
 export const SuperAdmin: React.FC = () => {
   const { theme, branding, updateTheme, updateBranding, loadBrandingAndTheme } = useTheme();
+  const [location] = useLocation();
+
+  const resolveInitialTab = () => {
+    if (location === '/settings/branding') return 'customizer';
+    if (location === '/settings/system') return 'telemetry';
+    return 'tenants';
+  };
   
-  const [activeTab, setActiveTab] = useState<'tenants' | 'customizer' | 'telemetry'>('tenants');
+  const [activeTab, setActiveTab] = useState<'tenants' | 'customizer' | 'telemetry'>(resolveInitialTab);
+
+  useEffect(() => {
+    if (location === '/settings/branding') setActiveTab('customizer');
+    else if (location === '/settings/system') setActiveTab('telemetry');
+    else setActiveTab('tenants');
+  }, [location]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [telemetry, setTelemetry] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
