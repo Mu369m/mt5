@@ -29,23 +29,41 @@ function generateLicenseKey(): string {
  * Register a new Tenant Admin user along with their company profile.
  */
 authRouter.post('/register', async (req: Request, res: Response): Promise<void> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Registration payload is required' });
+    return;
+  }
+
   const { companyName, email, password, superAdminCode } = req.body;
 
-  if (!email || !password) {
+  if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password.trim()) {
     res.status(400).json({ error: 'Email and password are required' });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+
+  if (typeof superAdminCode === 'string' && !superAdminCode.trim()) {
+    res.status(400).json({ error: 'Super admin setup key must be a non-empty string when supplied' });
+    return;
+  }
+
+  if (typeof companyName !== 'undefined' && typeof companyName !== 'string') {
+    res.status(400).json({ error: 'Company name must be a string when supplied' });
     return;
   }
 
   try {
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
       res.status(409).json({ error: 'Email is already registered' });
       return;
     }
 
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(normalizedPassword, salt);
 
     // Bootstrapping as a SUPER_ADMIN
     if (superAdminCode) {
@@ -56,7 +74,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 
       const superUser = await prisma.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           passwordHash,
           role: 'SUPER_ADMIN',
           tenantId: null,
@@ -73,10 +91,12 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     }
 
     // Default Tenant creation workflow
-    if (!companyName) {
+    if (typeof companyName !== 'string' || !companyName.trim()) {
       res.status(400).json({ error: 'Company Name is required for standard client accounts' });
       return;
     }
+
+    const normalizedCompanyName = companyName.trim();
 
     // Generate license details: active for exactly 1 year by default
     const expiration = new Date();
@@ -88,8 +108,8 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     const result = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
-          companyName,
-          email,
+          companyName: normalizedCompanyName,
+          email: normalizedEmail,
           licenseKey,
           status: 'ACTIVE',
           maxDestinations: 5,
@@ -100,7 +120,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 
       const user = await tx.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           passwordHash,
           role: 'TENANT_ADMIN',
           tenantId: tenant.id,
@@ -154,16 +174,24 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
  * Standard login validator returning access tokens.
  */
 authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Login payload is required' });
+    return;
+  }
+
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password.trim()) {
     res.status(400).json({ error: 'Credentials are required' });
     return;
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+
   try {
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { tenant: true },
     });
 
@@ -177,7 +205,7 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(normalizedPassword, user.passwordHash);
     if (!isMatch) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
