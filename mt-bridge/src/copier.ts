@@ -19,6 +19,30 @@ interface ConnectionState {
   terminalVersion?: string;
 }
 
+function assertValidEventPayload(event: CopierTradeEvent): void {
+  if (!event || typeof event !== 'object' || Array.isArray(event) || Object.keys(event).length === 0) {
+    throw new Error('Event payload is required');
+  }
+  if (typeof event.eventId !== 'string' || !event.eventId.trim()) {
+    throw new Error('Event id is required');
+  }
+  if (typeof event.symbol !== 'string' || !event.symbol.trim()) {
+    throw new Error('Symbol is required');
+  }
+}
+
+function assertValidHeartbeatPayload(payload: HeartbeatPayload): void {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Heartbeat payload is required');
+  }
+  if (typeof payload.connectionId !== 'string' || !payload.connectionId.trim()) {
+    throw new Error('Connection id is required');
+  }
+  if (typeof payload.sentAt !== 'string' || !payload.sentAt.trim()) {
+    throw new Error('Heartbeat timestamp is required');
+  }
+}
+
 const connections = new Map<string, ConnectionState>();
 const adapters = new Map<string, SlaveAdapter>();
 const masterEvents = new Set<string>();
@@ -34,6 +58,8 @@ export function unregisterSlaveAdapter(connectionId: string): void {
 }
 
 export function recordHeartbeat(payload: HeartbeatPayload): ConnectionState {
+  assertValidHeartbeatPayload(payload);
+
   const state: ConnectionState = {
     status: 'ONLINE',
     lastHeartbeatAt: payload.sentAt,
@@ -67,23 +93,29 @@ export async function dispatchCopierEvent(
   symbolResolver: (symbol: string) => string = (symbol) => symbol,
 ): Promise<CopierDispatchResult> {
   const startedAt = Date.now();
-  if (masterEvents.has(event.eventId)) {
-    return { eventId: event.eventId, status: 'DUPLICATE', slaveConnectionId, latencyMs: 0 };
-  }
 
-  const adapter = adapters.get(slaveConnectionId);
-  if (!adapter) {
-    return {
-      eventId: event.eventId,
-      status: 'FAILED',
-      slaveConnectionId,
-      latencyMs: Date.now() - startedAt,
-      errorMessage: 'Slave connection is not registered',
-    };
-  }
-
-  const scaledVolume = event.volumeLots ? event.volumeLots * volumeMultiplier : undefined;
   try {
+    assertValidEventPayload(event);
+    if (typeof slaveConnectionId !== 'string' || !slaveConnectionId.trim()) {
+      throw new Error('Slave connection id is required');
+    }
+
+    if (masterEvents.has(event.eventId)) {
+      return { eventId: event.eventId, status: 'DUPLICATE', slaveConnectionId, latencyMs: 0 };
+    }
+
+    const adapter = adapters.get(slaveConnectionId);
+    if (!adapter) {
+      return {
+        eventId: event.eventId,
+        status: 'FAILED',
+        slaveConnectionId,
+        latencyMs: Date.now() - startedAt,
+        errorMessage: 'Slave connection is not registered',
+      };
+    }
+
+    const scaledVolume = event.volumeLots ? event.volumeLots * volumeMultiplier : undefined;
     let slaveTicket: string | undefined;
     const symbol = symbolResolver(event.symbol);
     if (event.eventType === 'ORDER_OPEN' || event.eventType === 'PENDING_TRIGGER') {
@@ -107,7 +139,7 @@ export async function dispatchCopierEvent(
     };
   } catch (error) {
     return {
-      eventId: event.eventId,
+      eventId: typeof event === 'object' && event && typeof event.eventId === 'string' ? event.eventId : '',
       status: 'FAILED',
       slaveConnectionId,
       latencyMs: Date.now() - startedAt,

@@ -107,3 +107,26 @@ test('symbol resolver rejects malformed explicit mapping and normalization confi
   assert.throws(() => resolveDestinationSymbol('EURUSD', { prefixes: [''] }), /Prefix entries must be non-empty strings/);
   assert.throws(() => resolveDestinationSymbol('EURUSD', { suffixes: [''] }), /Suffix entries must be non-empty strings/);
 });
+
+test('copier rejects malformed event and heartbeat payloads before dispatching into a slave adapter', async () => {
+  const { dispatchCopierEvent, recordHeartbeat } = require('../mt-bridge/dist/copier.js');
+
+  const invalidPayload = await dispatchCopierEvent({}, 'slave-1', 1, (symbol) => symbol);
+  assert.equal(invalidPayload.status, 'FAILED');
+  assert.match(invalidPayload.errorMessage, /Event payload is required/);
+
+  const invalidSymbol = await dispatchCopierEvent({
+    eventId: 'e1',
+    profileId: 'p1',
+    masterConnectionId: 'm1',
+    masterTicket: 'TICKET-1',
+    eventType: 'ORDER_OPEN',
+    symbol: '',
+    volumeLots: 1,
+    occurredAt: '2026-09-09T00:00:00.000Z',
+  }, 'slave-1', 1, (symbol) => symbol);
+  assert.equal(invalidSymbol.status, 'FAILED');
+  assert.match(invalidSymbol.errorMessage, /Symbol is required/);
+
+  assert.throws(() => recordHeartbeat({ connectionId: '', sentAt: '2026-09-09T00:00:00.000Z' }), /Connection id is required/);
+});
