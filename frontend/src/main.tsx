@@ -22,6 +22,7 @@ import Login from './pages/login';
 import Register from './pages/register';
 import Clients from './pages/clients';
 import Copier from './pages/copier';
+import TenantAdmin from './pages/tenant-admin';
 import './index.css';
 
 // Direct routing guard checking authorization state
@@ -87,6 +88,9 @@ const RootApp = () => {
           </Route>
           <Route path="/copier">
             <RouteGuard component={Copier} path="/copier" />
+          </Route>
+          <Route path="/tenant-admin">
+            <RouteGuard component={TenantAdmin} path="/tenant-admin" />
           </Route>
           <Route path="/super-admin">
             <SuperAdminGuard component={SuperAdmin} />
