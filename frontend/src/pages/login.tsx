@@ -46,6 +46,7 @@ export const Login: React.FC = () => {
     { label: 'SYMBOLS', path: '/symbols', role: 'TENANT_ADMIN' as const },
     { label: 'POLICIES', path: '/policies', role: 'TENANT_ADMIN' as const },
     { label: 'COPIER', path: '/copier', role: 'TENANT_ADMIN' as const },
+    { label: 'TENANT ADMIN', path: '/tenant-admin', role: 'TENANT_ADMIN' as const },
     { label: 'SUPER ADMIN', path: '/super-admin', role: 'SUPER_ADMIN' as const },
   ];
 
