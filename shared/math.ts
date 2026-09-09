@@ -12,29 +12,43 @@
 /**
  * Converts a standard USD value into US Cents (USC).
  * 1 USD is equivalent to 100 USC.
- * 
+ *
  * @param usdAmount - The dollar value to convert.
  * @returns The converted amount in Cents (integer).
  */
 export function convertUsdToCent(usdAmount: number): number {
-  if (typeof usdAmount !== 'number' || isNaN(usdAmount)) {
+  if (typeof usdAmount !== 'number' || !Number.isFinite(usdAmount) || usdAmount < 0) {
     return 0;
   }
   // Round to prevent floating point inaccuracies like 19.99 * 100 = 1998.9999999999998
-  return Math.round(usdAmount * 100);
+  return Math.round((usdAmount + Number.EPSILON) * 100);
+}
+
+/**
+ * Alias matching the requested USC terminology from the project brief.
+ */
+export function convertUsdToUsc(usdAmount: number): number {
+  return convertUsdToCent(usdAmount);
 }
 
 /**
  * Converts a US Cents (USC) value back to a standard USD representation.
- * 
+ *
  * @param centAmount - The cent value to convert.
  * @returns The converted amount in USD (floating point).
  */
 export function convertCentToUsd(centAmount: number): number {
-  if (typeof centAmount !== 'number' || isNaN(centAmount)) {
+  if (typeof centAmount !== 'number' || !Number.isFinite(centAmount) || centAmount < 0) {
     return 0;
   }
   return centAmount / 100;
+}
+
+/**
+ * Alias matching the requested USC terminology from the project brief.
+ */
+export function convertUscToUsd(uscAmount: number): number {
+  return convertCentToUsd(uscAmount);
 }
 
 /**
@@ -55,19 +69,19 @@ export function convertCentToUsd(centAmount: number): number {
  * @returns The scaled lot volume for target LP execution.
  */
 export function scaleVolumeToDestination(rawLots: number, lotsDivisor: number): number {
-  if (typeof rawLots !== 'number' || isNaN(rawLots) || rawLots <= 0) {
+  if (typeof rawLots !== 'number' || !Number.isFinite(rawLots) || rawLots <= 0) {
     return 0;
   }
-  
-  // Guard against division by zero and invalid divisors
-  if (typeof lotsDivisor !== 'number' || isNaN(lotsDivisor) || lotsDivisor <= 0) {
-    return rawLots; // Return unscaled if divisor is invalid
+
+  // Guard against division by zero and invalid divisors.
+  if (typeof lotsDivisor !== 'number' || !Number.isFinite(lotsDivisor) || lotsDivisor <= 0) {
+    return 0;
   }
 
   const scaled = rawLots / lotsDivisor;
-  
-  // Truncate/round to 4 decimal places to support micro lot granular resolutions (e.g. 0.0001 lots)
-  return Math.round(scaled * 10000) / 10000;
+
+  // Keep precision safe for downstream bridge and execution layers.
+  return Math.round((scaled + Number.EPSILON) * 10000) / 10000;
 }
 
 /**
@@ -83,10 +97,11 @@ export function scaleVolumeToDestination(rawLots: number, lotsDivisor: number): 
  * @returns The numerical representation of a single point (e.g., 0.00001).
  */
 export function getPointValue(digits: number): number {
-  if (typeof digits !== 'number' || isNaN(digits) || digits < 0) {
+  if (typeof digits !== 'number' || !Number.isFinite(digits) || digits < 0) {
     return 0.00001; // Default to 5-digit broker resolution
   }
-  const cleanDigits = Math.floor(digits);
+
+  const cleanDigits = Math.max(0, Math.floor(digits));
   return 1 / Math.pow(10, cleanDigits);
 }
 
@@ -106,19 +121,20 @@ export function getPointValue(digits: number): number {
  * @returns The final marked-up price ready for MT5 forwarding.
  */
 export function applyMarkup(basePrice: number, markupPoints: number, digits: number): number {
-  if (typeof basePrice !== 'number' || isNaN(basePrice)) {
+  if (typeof basePrice !== 'number' || !Number.isFinite(basePrice)) {
     return 0;
   }
-  if (typeof markupPoints !== 'number' || isNaN(markupPoints) || markupPoints === 0) {
+  if (typeof markupPoints !== 'number' || !Number.isFinite(markupPoints) || markupPoints === 0) {
     return basePrice;
   }
-  
-  const pointVal = getPointValue(digits);
+
+  const safeDigits = Math.max(0, Math.floor(digits));
+  const pointVal = getPointValue(safeDigits);
   const rawAdjusted = basePrice + (markupPoints * pointVal);
-  
+
   // Eliminate IEEE 754 float drift by rounding to the broker's digits
-  const scaleMultiplier = Math.pow(10, digits);
-  return Math.round(rawAdjusted * scaleMultiplier) / scaleMultiplier;
+  const scaleMultiplier = Math.pow(10, safeDigits);
+  return Math.round((rawAdjusted + Number.EPSILON) * scaleMultiplier) / scaleMultiplier;
 }
 
 /**
