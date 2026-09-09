@@ -61,16 +61,33 @@ copierRouter.post('/connections', requireRole(['TENANT_ADMIN']), async (req: Aut
 copierRouter.post('/connections/:id/heartbeat', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
   const id = String(req.params.id);
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Heartbeat payload is required' });
+    return;
+  }
+
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Connection id is required' });
+    return;
+  }
+
+  if (typeof req.body.sentAt !== 'string' || !req.body.sentAt.trim()) {
+    res.status(400).json({ error: 'Heartbeat timestamp is required' });
+    return;
+  }
+
   const connection = await prisma.copierConnection.findFirst({ where: { id, tenantId } });
   if (!connection) {
     res.status(404).json({ error: 'Copier connection not found' });
     return;
   }
-  const sentAt = typeof req.body.sentAt === 'string' ? req.body.sentAt : new Date().toISOString();
-  const runtime = recordHeartbeat({ connectionId: id, sentAt, terminalVersion: req.body.terminalVersion });
+
+  const sentAt = req.body.sentAt.trim();
+  const runtime = recordHeartbeat({ connectionId: id, sentAt, terminalVersion: typeof req.body.terminalVersion === 'string' && req.body.terminalVersion.trim() ? req.body.terminalVersion.trim() : undefined });
   const updated = await prisma.copierConnection.update({
     where: { id },
-    data: { status: 'ONLINE', lastHeartbeatAt: new Date(sentAt), terminalVersion: req.body.terminalVersion },
+    data: { status: 'ONLINE', lastHeartbeatAt: new Date(sentAt), terminalVersion: typeof req.body.terminalVersion === 'string' && req.body.terminalVersion.trim() ? req.body.terminalVersion.trim() : undefined },
   });
   res.json({ connection: updated, runtime });
 });
@@ -82,13 +99,30 @@ copierRouter.get('/profiles', async (req: AuthenticatedRequest, res: Response) =
 
 copierRouter.put('/profiles/:profileId', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Profile update payload is required' });
+    return;
+  }
+
   const profileId = String(req.params.profileId);
+  if (typeof profileId !== 'string' || !profileId.trim()) {
+    res.status(400).json({ error: 'Profile id is required' });
+    return;
+  }
+
   const existing = await prisma.copierProfile.findFirst({ where: { id: profileId, tenantId } });
   if (!existing) {
     res.status(404).json({ error: 'Copier profile not found' });
     return;
   }
+
   const { name, enabled, maxSlippagePoints, volumeMultiplier, executionMode, routingMode, reverseTrading, maxBBookExposureLots, maxDailyLossPercent, maxDrawdownPercent, maxExecutionTtlMs } = req.body;
+  if (typeof name === 'string' && !name.trim()) {
+    res.status(400).json({ error: 'Profile name must be a non-empty string when provided' });
+    return;
+  }
+
   const updated = await prisma.copierProfile.update({
     where: { id: profileId },
     data: {
