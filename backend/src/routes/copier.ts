@@ -28,13 +28,32 @@ copierRouter.get('/connections', async (req: AuthenticatedRequest, res: Response
 
 copierRouter.post('/connections', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Connection payload is required' });
+    return;
+  }
+
   const { name, platform, role, terminalVersion } = req.body;
-  if (!name || !['MT4', 'MT5'].includes(platform) || !['MASTER', 'SLAVE'].includes(role)) {
+  if (typeof name !== 'string' || !name.trim() || typeof platform !== 'string' || !['MT4', 'MT5'].includes(platform) || typeof role !== 'string' || !['MASTER', 'SLAVE'].includes(role)) {
     res.status(400).json({ error: 'name, platform (MT4/MT5), and role (MASTER/SLAVE) are required' });
     return;
   }
+
+  const safeName = name.trim();
+  const safePlatform = platform === 'MT4' || platform === 'MT5' ? platform : 'MT4';
+  const safeRole = role === 'MASTER' || role === 'SLAVE' ? role : 'MASTER';
+  const safeTerminalVersion = typeof terminalVersion === 'string' && terminalVersion.trim() ? terminalVersion.trim() : undefined;
+
   const connection = await prisma.copierConnection.create({
-    data: { tenantId, name, platform, role, terminalVersion, status: 'OFFLINE' },
+    data: {
+      tenantId,
+      name: safeName,
+      platform: safePlatform as 'MT4' | 'MT5',
+      role: safeRole as 'MASTER' | 'SLAVE',
+      terminalVersion: safeTerminalVersion,
+      status: 'OFFLINE',
+    },
   });
   res.status(201).json(connection);
 });
@@ -91,17 +110,31 @@ copierRouter.put('/profiles/:profileId', requireRole(['TENANT_ADMIN']), async (r
 
 copierRouter.post('/profiles', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Profile payload is required' });
+    return;
+  }
+
   const { name, masterConnectionId, maxSlippagePoints, volumeMultiplier, executionMode, routingMode, reverseTrading, maxBBookExposureLots, maxDailyLossPercent, maxDrawdownPercent, maxExecutionTtlMs } = req.body;
-  const master = await prisma.copierConnection.findFirst({ where: { id: masterConnectionId, tenantId, role: 'MASTER' } });
-  if (!name || !master) {
+  if (typeof name !== 'string' || !name.trim() || typeof masterConnectionId !== 'string' || !masterConnectionId.trim()) {
     res.status(400).json({ error: 'A valid tenant-owned MASTER connection and profile name are required' });
     return;
   }
+
+  const safeName = name.trim();
+  const safeMasterConnectionId = masterConnectionId.trim();
+  const master = await prisma.copierConnection.findFirst({ where: { id: safeMasterConnectionId, tenantId, role: 'MASTER' } });
+  if (!master) {
+    res.status(400).json({ error: 'A valid tenant-owned MASTER connection and profile name are required' });
+    return;
+  }
+
   const profile = await prisma.copierProfile.create({
     data: {
       tenantId,
-      name,
-      masterConnectionId,
+      name: safeName,
+      masterConnectionId: safeMasterConnectionId,
       maxSlippagePoints: Number.isFinite(Number(maxSlippagePoints)) ? Number(maxSlippagePoints) : 20,
       volumeMultiplier: Number.isFinite(Number(volumeMultiplier)) && Number(volumeMultiplier) > 0 ? Number(volumeMultiplier) : 1,
       executionMode: executionMode === 'LIVE' ? 'LIVE' : 'SIMULATED',
