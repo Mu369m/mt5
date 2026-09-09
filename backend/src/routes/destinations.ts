@@ -52,6 +52,12 @@ destinationsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => 
  */
 destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Destination payload is required' });
+    return;
+  }
+
   const {
     brokerName,
     accountLabel,
@@ -67,7 +73,7 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
     destDealerWaitMs,
   } = req.body;
 
-  if (!brokerName || !accountLabel || !serverIp || !port || !loginId || !password) {
+  if (typeof brokerName !== 'string' || !brokerName.trim() || typeof accountLabel !== 'string' || !accountLabel.trim() || typeof serverIp !== 'string' || !serverIp.trim() || typeof port !== 'string' || !port.trim() || typeof loginId !== 'string' || !loginId.trim() || typeof password !== 'string' || !password.trim()) {
     res.status(400).json({ error: 'Missing mandatory account connection fields' });
     return;
   }
@@ -92,15 +98,15 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
     }
 
     // 2. Encrypt Password & write
-    const encryptedPassword = encrypt(password);
+    const encryptedPassword = encrypt(password.trim());
     const destination = await prisma.lpDestination.create({
       data: {
         tenantId,
-        brokerName,
-        accountLabel,
-        serverIp,
+        brokerName: brokerName.trim(),
+        accountLabel: accountLabel.trim(),
+        serverIp: serverIp.trim(),
         port: parseInt(port),
-        loginId,
+        loginId: loginId.trim(),
         encryptedPassword,
         accountMode: accountMode || 'HEDGING',
         enableForwarding: enableForwarding !== false,
@@ -117,7 +123,7 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
         destinationId: destination.id,
         eventType: 'DEST_CREATE',
         logLevel: 'INFO',
-        message: `Tenant registered new destination account "${accountLabel}" (${brokerName})`,
+        message: `Tenant registered new destination account "${accountLabel.trim()}" (${brokerName.trim()})`,
       },
     });
 
@@ -135,7 +141,18 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
  */
 destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Destination update payload is required' });
+    return;
+  }
+
   const id = String(req.params.id);
+  if (typeof id !== 'string' || !id.trim()) {
+    res.status(400).json({ error: 'Destination id is required' });
+    return;
+  }
+
   const {
     brokerName,
     accountLabel,
@@ -163,21 +180,21 @@ destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authen
     }
 
     const data: any = {
-      brokerName,
-      accountLabel,
-      serverIp,
-      port: port ? parseInt(port) : undefined,
-      loginId,
-      accountMode,
-      enableForwarding,
-      deviationPt: deviationPt ? parseInt(deviationPt) : undefined,
-      magicId: magicId ? parseInt(magicId) : undefined,
-      lotsDivisor: lotsDivisor ? parseFloat(lotsDivisor) : undefined,
-      destDealerWaitMs: destDealerWaitMs ? parseInt(destDealerWaitMs) : undefined,
+      brokerName: typeof brokerName === 'string' && brokerName.trim() ? brokerName.trim() : undefined,
+      accountLabel: typeof accountLabel === 'string' && accountLabel.trim() ? accountLabel.trim() : undefined,
+      serverIp: typeof serverIp === 'string' && serverIp.trim() ? serverIp.trim() : undefined,
+      port: typeof port === 'string' && port.trim() ? parseInt(port) : undefined,
+      loginId: typeof loginId === 'string' && loginId.trim() ? loginId.trim() : undefined,
+      accountMode: typeof accountMode === 'string' && accountMode.trim() ? accountMode.trim() : undefined,
+      enableForwarding: typeof enableForwarding === 'boolean' ? enableForwarding : undefined,
+      deviationPt: typeof deviationPt === 'string' && deviationPt.trim() ? parseInt(deviationPt) : undefined,
+      magicId: typeof magicId === 'string' && magicId.trim() ? parseInt(magicId) : undefined,
+      lotsDivisor: typeof lotsDivisor === 'string' && lotsDivisor.trim() ? parseFloat(lotsDivisor) : undefined,
+      destDealerWaitMs: typeof destDealerWaitMs === 'string' && destDealerWaitMs.trim() ? parseInt(destDealerWaitMs) : undefined,
     };
 
-    if (password) {
-      data.encryptedPassword = encrypt(password);
+    if (typeof password === 'string' && password.trim()) {
+      data.encryptedPassword = encrypt(password.trim());
     }
 
     const updated = await prisma.lpDestination.update({
