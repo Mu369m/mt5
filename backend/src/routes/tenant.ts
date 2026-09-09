@@ -124,9 +124,22 @@ tenantRouter.get('/metering', async (req: AuthenticatedRequest, res: Response) =
  */
 tenantRouter.get('/audit-logs', async (req: AuthenticatedRequest, res: Response) => {
   const tenantId = getTenantId(req)!;
-  const { page = '1', limit = '20' } = req.query;
-  const pageInt = parseInt(page as string, 10);
-  const limitInt = parseInt(limit as string, 10);
+
+  const pageValue = req.query.page ?? '1';
+  const limitValue = req.query.limit ?? '20';
+
+  if (typeof pageValue !== 'string' || typeof limitValue !== 'string') {
+    res.status(400).json({ error: 'page and limit must be query strings' });
+    return;
+  }
+
+  const pageInt = Number.parseInt(pageValue.trim(), 10);
+  const limitInt = Number.parseInt(limitValue.trim(), 10);
+
+  if (!Number.isInteger(pageInt) || pageInt < 1 || !Number.isInteger(limitInt) || limitInt < 1 || limitInt > 200) {
+    res.status(400).json({ error: 'page must be a positive integer and limit must be a positive integer up to 200' });
+    return;
+  }
 
   try {
     const [logs, total] = await Promise.all([
