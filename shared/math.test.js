@@ -36,3 +36,11 @@ test('sandbox adapter mode remains explicit and disconnected by default', async 
   assert.equal(unavailable.liveEnabled, false);
   await assert.rejects(() => unavailable.connect(), /No live trading destination adapter is connected/);
 });
+
+test('execution router refuses to convert a non-live destination adapter into a safety adapter', () => {
+  const { createUnavailableTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
+  const { destinationAdapterToExecutionAdapter } = require('../mt-bridge/dist/execution-router.js');
+  const adapter = createUnavailableTradingDestinationAdapter();
+
+  assert.throws(() => destinationAdapterToExecutionAdapter(adapter), /registered live trading destination adapter/);
+});
