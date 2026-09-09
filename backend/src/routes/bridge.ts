@@ -24,16 +24,36 @@ bridgeRouter.use(requireTenantContext);
  */
 bridgeRouter.post('/route', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Bridge routing payload is required' });
+    return;
+  }
+
   const { sourceGroup, symbol, orderType, lots, price } = req.body;
 
-  if (!sourceGroup || !symbol || !orderType || !lots) {
+  if (typeof sourceGroup !== 'string' || !sourceGroup.trim() || typeof symbol !== 'string' || !symbol.trim() || typeof orderType !== 'string' || !orderType.trim() || (typeof lots !== 'number' && typeof lots !== 'string')) {
     res.status(400).json({ error: 'sourceGroup, symbol, orderType, and lots are required' });
     return;
   }
 
-  const requestedLots = parseFloat(lots);
-  if (isNaN(requestedLots) || requestedLots <= 0) {
-    res.status(400).json({ error: 'Lots must be a positive number' });
+  const normalizedOrderType = orderType.trim();
+  if (!['BUY', 'SELL', 'LIMIT_BUY', 'LIMIT_SELL'].includes(normalizedOrderType)) {
+    res.status(400).json({ error: 'Order type must be BUY, SELL, LIMIT_BUY, or LIMIT_SELL' });
+    return;
+  }
+
+  const safeOrderType = normalizedOrderType as 'BUY' | 'SELL' | 'LIMIT_BUY' | 'LIMIT_SELL';
+
+  const requestedLots = typeof lots === 'number' ? lots : parseFloat(lots);
+  if (!Number.isFinite(requestedLots) || requestedLots <= 0) {
+    res.status(400).json({ error: 'Lots must be a positive finite number' });
+    return;
+  }
+
+  const requestedPrice = typeof price === 'number' ? price : typeof price === 'string' && price.trim() ? parseFloat(price) : undefined;
+  if (typeof price === 'string' && price.trim() && (!Number.isFinite(requestedPrice) || requestedPrice === undefined)) {
+    res.status(400).json({ error: 'Price must be a finite number when provided' });
     return;
   }
 
@@ -50,9 +70,9 @@ bridgeRouter.post('/route', async (req: AuthenticatedRequest, res: Response): Pr
       destinationId: resolution.destinationId,
       sourceGroup,
       symbol,
-      orderType,
+      orderType: safeOrderType,
       lots: requestedLots,
-      price: price ? parseFloat(price) : undefined,
+      price: requestedPrice,
     });
 
     if (orderResult.success) {
@@ -69,7 +89,7 @@ bridgeRouter.post('/route', async (req: AuthenticatedRequest, res: Response): Pr
         symbol,
         volumeLots: requestedLots,
         executionLatencyMs: orderResult.executionLatencyMs,
-        message: `Group route ${orderType} ${requestedLots.toFixed(2)} lots ${symbol} via rule "${resolution.ruleName}" — ${orderResult.success ? 'FILLED' : 'REJECTED'}`,
+        message: `Group route ${safeOrderType} ${requestedLots.toFixed(2)} lots ${symbol} via rule "${resolution.ruleName}" — ${orderResult.success ? 'FILLED' : 'REJECTED'}`,
         metadata: {
           orderId: orderResult.orderId,
           ruleId: resolution.ruleId,

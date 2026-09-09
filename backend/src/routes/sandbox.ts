@@ -31,16 +31,36 @@ sandboxRouter.use(requireTenantContext);
  */
 sandboxRouter.post('/execute', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
-  const { destinationId, symbol, orderType, lots, price } = req.body;
 
-  if (!destinationId || !symbol || !orderType || !lots) {
-    res.status(400).json({ error: 'Missing mandatory test trade fields' });
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Sandbox order payload is required' });
     return;
   }
 
-  const requestedLots = parseFloat(lots);
-  if (isNaN(requestedLots) || requestedLots <= 0) {
-    res.status(400).json({ error: 'Lots size must be a positive number' });
+  const { destinationId, symbol, orderType, lots, price } = req.body;
+
+  if (typeof destinationId !== 'string' || !destinationId.trim() || typeof symbol !== 'string' || !symbol.trim() || typeof orderType !== 'string' || !orderType.trim() || (typeof lots !== 'number' && typeof lots !== 'string')) {
+    res.status(400).json({ error: 'Destination, symbol, orderType, and lots are required' });
+    return;
+  }
+
+  const normalizedOrderType = orderType.trim();
+  if (!['BUY', 'SELL', 'LIMIT_BUY', 'LIMIT_SELL'].includes(normalizedOrderType)) {
+    res.status(400).json({ error: 'Order type must be BUY, SELL, LIMIT_BUY, or LIMIT_SELL' });
+    return;
+  }
+
+  const safeOrderType = normalizedOrderType as 'BUY' | 'SELL' | 'LIMIT_BUY' | 'LIMIT_SELL';
+
+  const requestedLots = typeof lots === 'number' ? lots : parseFloat(lots);
+  if (!Number.isFinite(requestedLots) || requestedLots <= 0) {
+    res.status(400).json({ error: 'Lots size must be a positive finite number' });
+    return;
+  }
+
+  const requestedPrice = typeof price === 'number' ? price : typeof price === 'string' && price.trim() ? parseFloat(price) : undefined;
+  if (typeof price === 'string' && price.trim() && (!Number.isFinite(requestedPrice) || requestedPrice === undefined)) {
+    res.status(400).json({ error: 'Price must be a finite number when provided' });
     return;
   }
 
@@ -71,9 +91,9 @@ sandboxRouter.post('/execute', async (req: AuthenticatedRequest, res: Response):
       destinationId,
       sourceGroup,
       symbol,
-      orderType,
+      orderType: safeOrderType,
       lots: requestedLots,
-      price: price ? parseFloat(price) : undefined,
+      price: requestedPrice,
     });
 
     const roundtripLatency = Date.now() - startTime;
@@ -94,7 +114,7 @@ sandboxRouter.post('/execute', async (req: AuthenticatedRequest, res: Response):
         symbol,
         volumeLots: requestedLots,
         executionLatencyMs: orderResult.executionLatencyMs,
-        message: `Sandbox ${orderType} ${requestedLots.toFixed(2)} lots of ${symbol} on ${dest.accountLabel} - Status: ${orderResult.success ? 'SUCCESS' : 'FAILED'}. Internal Overheads: ${roundtripLatency - orderResult.executionLatencyMs}ms. Details: ${orderResult.errorMessage || 'Order Filled'}`,
+        message: `Sandbox ${safeOrderType} ${requestedLots.toFixed(2)} lots of ${symbol} on ${dest.accountLabel} - Status: ${orderResult.success ? 'SUCCESS' : 'FAILED'}. Internal Overheads: ${roundtripLatency - orderResult.executionLatencyMs}ms. Details: ${orderResult.errorMessage || 'Order Filled'}`,
         metadata: {
           requestedPrice: price,
           fillPrice: orderResult.fillPrice,
