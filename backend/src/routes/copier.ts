@@ -119,22 +119,41 @@ copierRouter.post('/profiles', requireRole(['TENANT_ADMIN']), async (req: Authen
 copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const tenantId = getTenantId(req)!;
   const profileId = String(req.params.profileId);
+
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ error: 'Event payload is required' });
+    return;
+  }
+
+  if (typeof req.body.slaveConnectionId !== 'string' || !req.body.slaveConnectionId.trim()) {
+    res.status(400).json({ error: 'Slave connection id is required' });
+    return;
+  }
+
   const profile = await prisma.copierProfile.findFirst({ where: { id: profileId, tenantId, enabled: true } });
   if (!profile) {
     res.status(404).json({ error: 'Enabled copier profile not found' });
     return;
   }
+
   const event = req.body;
   const eventTypes = ['ORDER_OPEN', 'ORDER_MODIFY', 'ORDER_CLOSE', 'PARTIAL_CLOSE', 'PENDING_TRIGGER'];
   if (!event?.eventId || !event?.masterTicket || !eventTypes.includes(event?.eventType) || !event?.symbol) {
     res.status(400).json({ error: 'eventId, masterTicket, eventType, and symbol are required' });
     return;
   }
+
+  if (typeof event.symbol !== 'string' || !event.symbol.trim()) {
+    res.status(400).json({ error: 'Symbol is required' });
+    return;
+  }
+
   const existing = await prisma.copierEvent.findFirst({ where: { tenantId, eventId: event.eventId } });
   if (existing) {
     res.status(200).json({ event: existing, status: 'DUPLICATE' satisfies CopierEventStatus });
     return;
   }
+
   const created = await prisma.copierEvent.create({
     data: {
       tenantId,
@@ -152,11 +171,13 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
       occurredAt: new Date(event.occurredAt || Date.now()),
     },
   });
-  const dispatch = await dispatchCopierEvent(event, req.body.slaveConnectionId || '', Number(profile.volumeMultiplier));
+
+  const dispatch = await dispatchCopierEvent(event, req.body.slaveConnectionId.trim(), Number(profile.volumeMultiplier));
   const updated = await prisma.copierEvent.update({
     where: { id: created.id },
-    data: { status: dispatch.status === 'APPLIED' ? 'APPLIED' : 'FAILED', latencyMs: dispatch.latencyMs, slaveTicket: dispatch.slaveTicket, errorMessage: dispatch.errorMessage, slaveConnectionId: req.body.slaveConnectionId || undefined },
+    data: { status: dispatch.status === 'APPLIED' ? 'APPLIED' : 'FAILED', latencyMs: dispatch.latencyMs, slaveTicket: dispatch.slaveTicket, errorMessage: dispatch.errorMessage, slaveConnectionId: req.body.slaveConnectionId.trim() },
   });
+
   if (dispatch.status === 'FAILED') {
     void enqueueAlert({
       subject: 'Copier dispatch failed',
@@ -164,6 +185,7 @@ copierRouter.post('/profiles/:profileId/events', async (req: AuthenticatedReques
       severity: 'CRITICAL',
     });
   }
+
   res.status(dispatch.status === 'APPLIED' ? 202 : 503).json({ event: updated, dispatch });
 });
 
