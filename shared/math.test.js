@@ -58,3 +58,11 @@ test('registry keeps a visible, safe live-adapter scan path and rejects implicit
   assert.equal(registry.getLiveAdapter(), undefined);
   assert.equal(registry.get('SANDBOX')?.mode, 'SANDBOX');
 });
+
+test('netting engine rejects invalid tenant context, symbol and direction before mutating exposure', () => {
+  const { processNettingOffset } = require('../mt-bridge/dist/netting.js');
+  assert.throws(() => processNettingOffset('', 'EURUSD', 'BUY', 1), /Tenant context is required/);
+  assert.throws(() => processNettingOffset('tenant', '', 'BUY', 1), /Symbol is required/);
+  assert.throws(() => processNettingOffset('tenant', 'EURUSD', 'HOLD', 1), /Direction must be BUY or SELL/);
+  assert.throws(() => processNettingOffset('tenant', 'EURUSD', 'BUY', 0), /Volume lots must be a positive finite number/);
+});

@@ -77,7 +77,20 @@ export function processNettingOffset(
   savedCommission: number;
   newExposure: number;
 } {
-  const exposure = getExposure(tenantId, symbol);
+  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+    throw new Error('Tenant context is required for netting');
+  }
+  if (typeof symbol !== 'string' || !symbol.trim()) {
+    throw new Error('Symbol is required for netting');
+  }
+  if (!['BUY', 'SELL'].includes(direction)) {
+    throw new Error('Direction must be BUY or SELL');
+  }
+  if (!Number.isFinite(volumeLots) || volumeLots <= 0) {
+    throw new Error('Volume lots must be a positive finite number');
+  }
+
+  const exposure = getExposure(tenantId, symbol.trim().toUpperCase());
   const currentNet = exposure.netVolume;
 
   let isFullyNetted = false;
