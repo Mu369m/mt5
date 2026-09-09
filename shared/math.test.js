@@ -99,3 +99,11 @@ test('news shield rejects malformed calendar and test event input before volatil
   assert.throws(() => injectTestNewsEvent('', 5), /Title is required/);
   assert.throws(() => injectTestNewsEvent('NFP Event', Number.NaN), /Delay minutes must be a finite positive number/);
 });
+
+test('symbol resolver rejects malformed explicit mapping and normalization configuration before attempting a destination symbol pass-through', () => {
+  const { resolveDestinationSymbol } = require('../mt-bridge/dist/symbol-resolver.js');
+  assert.throws(() => resolveDestinationSymbol('', {}), /Source symbol is required/);
+  assert.throws(() => resolveDestinationSymbol('EURUSD', { explicitMappings: { EURUSD: '' } }), /Explicit destination symbol must not be empty/);
+  assert.throws(() => resolveDestinationSymbol('EURUSD', { prefixes: [''] }), /Prefix entries must be non-empty strings/);
+  assert.throws(() => resolveDestinationSymbol('EURUSD', { suffixes: [''] }), /Suffix entries must be non-empty strings/);
+});
