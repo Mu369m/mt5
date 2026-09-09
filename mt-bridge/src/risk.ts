@@ -51,9 +51,25 @@ export function calculateCopyLots(config: ExecutionControlConfig, masterLots: nu
   if (!Number.isFinite(masterEquity) || masterEquity <= 0) return 0;
   if (!Number.isFinite(slaveEquity) || slaveEquity <= 0) return 0;
 
-  if (config.lotSizingMode === 'FIXED') return Math.max(0, config.fixedLots);
-  if (config.lotSizingMode === 'EQUITY_RATIO') return Math.max(0, masterLots * (slaveEquity / Math.max(masterEquity, 0.000001)));
-  if (config.lotSizingMode === 'CUSTOM_RATIO') return Math.max(0, masterLots * Math.max(config.customRatio, 0));
+  const allowedModes = ['FIXED', 'RISK_PERCENT', 'EQUITY_RATIO', 'CUSTOM_RATIO'];
+  if (typeof config.lotSizingMode !== 'string' || !allowedModes.includes(config.lotSizingMode)) return 0;
+
+  if (config.lotSizingMode === 'FIXED') {
+    if (!Number.isFinite(config.fixedLots) || config.fixedLots < 0) return 0;
+    return Math.max(0, config.fixedLots);
+  }
+
+  if (config.lotSizingMode === 'EQUITY_RATIO') {
+    if (!Number.isFinite(config.customRatio) || config.customRatio < 0) return 0;
+    return Math.max(0, masterLots * (slaveEquity / Math.max(masterEquity, 0.000001)));
+  }
+
+  if (config.lotSizingMode === 'CUSTOM_RATIO') {
+    if (!Number.isFinite(config.customRatio) || config.customRatio < 0) return 0;
+    return Math.max(0, masterLots * Math.max(config.customRatio, 0));
+  }
+
+  if (!Number.isFinite(config.riskPercent) || config.riskPercent < 0) return 0;
   return Math.max(0, (slaveEquity * Math.max(config.riskPercent, 0) / 100) * masterLots / Math.max(masterEquity, 0.000001));
 }
 

@@ -71,6 +71,8 @@ test('risk engine rejects malformed flow profile and execution config before rou
   const { classifyFlow, evaluateTrade, calculateCopyLots } = require('../mt-bridge/dist/risk.js');
   assert.throws(() => classifyFlow({}), /Invalid flow profile input/);
   assert.equal(calculateCopyLots({ lotSizingMode: 'FIXED', fixedLots: 1 }, 0, 100, 100), 0);
+  assert.equal(calculateCopyLots({ lotSizingMode: 'BAD', fixedLots: 1 }, 1, 100, 100), 0);
+  assert.equal(calculateCopyLots({ lotSizingMode: 'FIXED', fixedLots: Number.NaN }, 1, 100, 100), 0);
   assert.deepEqual(evaluateTrade({}, 'EURUSD', 'BUY', 1, 'B_BOOK', 0), { allowed: false, reason: 'Invalid execution config', direction: 'BUY', volumeLots: 1, book: 'B_BOOK' });
 });
 
