@@ -143,10 +143,58 @@ export interface BrandingConfig {
   faviconUrl: string;
 }
 
+export interface FeatureFlags {
+  enableCopier?: boolean;
+  enableSmartRouting?: boolean;
+  enableNetting?: boolean;
+  enableNewsShield?: boolean;
+  enableRebateTiers?: boolean;
+  enableWalletTreasury?: boolean;
+  enableCrmPipeline?: boolean;
+}
+
+export interface FeeConfig {
+  brokerFeePerLot?: number;
+  rebatePercent?: number;
+  treasuryCurrency?: string;
+  maxMonthlyWalletLimit?: number;
+}
+
+export interface TenantDefaults {
+  maxDestinations?: number;
+  monthlyVolumeLimitLots?: number;
+  currency?: string;
+  licenseMonths?: number;
+}
+
+export interface CmsContent {
+  landingPageCopy?: string;
+  metaDescription?: string;
+  adminWatermark?: string;
+}
+
+export interface ModuleVisibility {
+  destinations?: boolean;
+  rules?: boolean;
+  symbols?: boolean;
+  policies?: boolean;
+  copier?: boolean;
+  tenants?: boolean;
+  telemetry?: boolean;
+  crm?: boolean;
+  treasury?: boolean;
+}
+
 export interface GlobalSiteSettings {
   id: string;
   themeConfig: ThemeConfig;
   brandingConfig: BrandingConfig;
+  featureFlags?: FeatureFlags;
+  feeConfig?: FeeConfig;
+  tenantDefaults?: TenantDefaults;
+  cmsContent?: CmsContent;
+  moduleVisibility?: ModuleVisibility;
+  customCss?: string;
   updatedAt: string;
 }
 

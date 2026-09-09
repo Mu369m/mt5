@@ -317,10 +317,16 @@ enum LogLevel {
 }
 
 model GlobalSiteSettings {
-  id             String   @id @default(uuid()) @db.Uuid
-  themeConfig    Json     @map("theme_config")
-  brandingConfig Json     @map("branding_config")
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id               String   @id @default(uuid()) @db.Uuid
+  themeConfig      Json     @map("theme_config")
+  brandingConfig   Json     @map("branding_config")
+  featureFlags     Json?    @default("{}") @map("feature_flags")
+  feeConfig        Json?    @default("{}") @map("fee_config")
+  tenantDefaults   Json?    @default("{}") @map("tenant_defaults")
+  cmsContent       Json?    @default("{}") @map("cms_content")
+  moduleVisibility Json?    @default("{}") @map("module_visibility")
+  customCss        String?  @map("custom_css") @db.Text
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("global_site_settings")
 }

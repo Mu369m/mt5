@@ -20,6 +20,13 @@ import {
   Sliders
 } from 'lucide-react';
 import { useTheme } from '../theme';
+import {
+  DEFAULT_FEATURE_FLAGS,
+  DEFAULT_FEE_CONFIG,
+  DEFAULT_TENANT_DEFAULTS,
+  DEFAULT_CMS_CONTENT,
+  DEFAULT_MODULE_VISIBILITY,
+} from '@workspace/shared';
 
 interface Tenant {
   id: string;
@@ -39,6 +46,14 @@ export const SuperAdmin: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [telemetry, setTelemetry] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({
+    featureFlags: DEFAULT_FEATURE_FLAGS,
+    feeConfig: DEFAULT_FEE_CONFIG,
+    tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+    cmsContent: DEFAULT_CMS_CONTENT,
+    moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+    customCss: '',
+  });
 
   // Tenant form states
   const [showAddTenant, setShowAddTenant] = useState(false);
@@ -61,10 +76,11 @@ export const SuperAdmin: React.FC = () => {
   const loadData = async () => {
     try {
       const token = localStorage.getItem('brp_token');
-      const [tenantsRes, telemRes, logsRes] = await Promise.all([
+      const [tenantsRes, telemRes, logsRes, settingsRes] = await Promise.all([
         fetch('/api/admin/tenants', { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch('/api/admin/telemetry', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('/api/admin/audit-logs?limit=15', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch('/api/admin/audit-logs?limit=15', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/admin/settings', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (tenantsRes.ok) setTenants(await tenantsRes.json());
@@ -72,6 +88,17 @@ export const SuperAdmin: React.FC = () => {
       if (logsRes.ok) {
         const logsData = await logsRes.json();
         setAuditLogs(logsData.logs || []);
+      }
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setSettings({
+          featureFlags: settingsData.featureFlags || DEFAULT_FEATURE_FLAGS,
+          feeConfig: settingsData.feeConfig || DEFAULT_FEE_CONFIG,
+          tenantDefaults: settingsData.tenantDefaults || DEFAULT_TENANT_DEFAULTS,
+          cmsContent: settingsData.cmsContent || DEFAULT_CMS_CONTENT,
+          moduleVisibility: settingsData.moduleVisibility || DEFAULT_MODULE_VISIBILITY,
+          customCss: settingsData.customCss || '',
+        });
       }
     } catch (err) {
       console.error('Failed loading Super Admin metadata', err);
@@ -189,25 +216,33 @@ export const SuperAdmin: React.FC = () => {
   const handleSaveBrandingCustomizer = async () => {
     try {
       const token = localStorage.getItem('brp_token');
+      const payload = {
+        themeConfig: {
+          ...theme,
+          primaryAccent: customPrimary,
+          bgVoid: customBg,
+          cardSurface: customCard,
+          borderRadius: `${customRadius}px`
+        },
+        brandingConfig: {
+          ...branding,
+          siteTitle: customTitle
+        },
+        featureFlags: settings.featureFlags,
+        feeConfig: settings.feeConfig,
+        tenantDefaults: settings.tenantDefaults,
+        cmsContent: settings.cmsContent,
+        moduleVisibility: settings.moduleVisibility,
+        customCss: settings.customCss ?? ''
+      };
+
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          themeConfig: {
-            ...theme,
-            primaryAccent: customPrimary,
-            bgVoid: customBg,
-            cardSurface: customCard,
-            borderRadius: `${customRadius}px`
-          },
-          brandingConfig: {
-            ...branding,
-            siteTitle: customTitle
-          }
-        })
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -220,6 +255,7 @@ export const SuperAdmin: React.FC = () => {
         updateBranding({
           siteTitle: customTitle
         });
+        setSettings(payload);
         alert('Visual CMS customizer styles applied and compiled globally!');
         await loadBrandingAndTheme();
       }

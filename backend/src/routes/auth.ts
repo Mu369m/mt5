@@ -13,6 +13,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../db';
+import {
+  DEFAULT_THEME_CONFIG,
+  DEFAULT_BRANDING_CONFIG,
+  DEFAULT_FEATURE_FLAGS,
+  DEFAULT_FEE_CONFIG,
+  DEFAULT_TENANT_DEFAULTS,
+  DEFAULT_CMS_CONTENT,
+  DEFAULT_MODULE_VISIBILITY,
+} from '@workspace/shared';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -147,22 +156,14 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       if (settingsCount === 0) {
         await tx.globalSiteSettings.create({
           data: {
-            themeConfig: {
-              primaryAccent: '#00F0FF',
-              bgVoid: '#0B0E14',
-              cardSurface: '#121721',
-              successColor: '#00E676',
-              errorColor: '#FF1744',
-              warningColor: '#FFD600',
-              fontFamily: 'Inter',
-              borderRadius: '8px',
-              glassOpacity: 0.8,
-            },
-            brandingConfig: {
-              siteTitle: 'BRP Trade Router SaaS',
-              logoUrl: '/assets/logo.svg',
-              faviconUrl: '/favicon.ico',
-            },
+            themeConfig: DEFAULT_THEME_CONFIG,
+            brandingConfig: DEFAULT_BRANDING_CONFIG,
+            featureFlags: DEFAULT_FEATURE_FLAGS,
+            feeConfig: DEFAULT_FEE_CONFIG,
+            tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+            cmsContent: DEFAULT_CMS_CONTENT,
+            moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+            customCss: '',
           },
         });
       }

@@ -24,6 +24,60 @@ export const DEFAULT_BRANDING_CONFIG = {
   faviconUrl: '/favicon.ico',
 } as const;
 
+/** Default dynamic feature toggles and global SaaS settings surfaced through the admin config model. */
+export const DEFAULT_FEATURE_FLAGS = {
+  enableCopier: true,
+  enableSmartRouting: true,
+  enableNetting: true,
+  enableNewsShield: false,
+  enableRebateTiers: true,
+  enableWalletTreasury: true,
+  enableCrmPipeline: false,
+} as const;
+
+export const DEFAULT_FEE_CONFIG = {
+  brokerFeePerLot: 0,
+  rebatePercent: 0,
+  treasuryCurrency: 'USD',
+  maxMonthlyWalletLimit: 100000,
+} as const;
+
+export const DEFAULT_TENANT_DEFAULTS = {
+  maxDestinations: 5,
+  monthlyVolumeLimitLots: 10000,
+  currency: 'USD',
+  licenseMonths: 12,
+} as const;
+
+export const DEFAULT_CMS_CONTENT = {
+  landingPageCopy: 'Institutional MT5 routing and copier platform',
+  metaDescription: 'MT5 bridge and copy-trading management platform',
+  adminWatermark: 'BRP Institutional Operations',
+} as const;
+
+export const DEFAULT_MODULE_VISIBILITY = {
+  destinations: true,
+  rules: true,
+  symbols: true,
+  policies: true,
+  copier: true,
+  tenants: true,
+  telemetry: true,
+  crm: false,
+  treasury: false,
+} as const;
+
+export const DEFAULT_DYNAMIC_SETTINGS = {
+  themeConfig: DEFAULT_THEME_CONFIG,
+  brandingConfig: DEFAULT_BRANDING_CONFIG,
+  featureFlags: DEFAULT_FEATURE_FLAGS,
+  feeConfig: DEFAULT_FEE_CONFIG,
+  tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+  cmsContent: DEFAULT_CMS_CONTENT,
+  moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+  customCss: '',
+} as const;
+
 /** Preset theme bundles selectable from Super Admin CMS. */
 export const THEME_PRESETS = {
   cyberDark: DEFAULT_THEME_CONFIG,

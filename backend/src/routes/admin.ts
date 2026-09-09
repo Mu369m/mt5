@@ -15,6 +15,15 @@ import { requireRole } from '../middleware/auth';
 import prisma from '../db';
 import os from 'os';
 import crypto from 'crypto';
+import {
+  DEFAULT_THEME_CONFIG,
+  DEFAULT_BRANDING_CONFIG,
+  DEFAULT_FEATURE_FLAGS,
+  DEFAULT_FEE_CONFIG,
+  DEFAULT_TENANT_DEFAULTS,
+  DEFAULT_CMS_CONTENT,
+  DEFAULT_MODULE_VISIBILITY,
+} from '@workspace/shared';
 
 export const adminRouter = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
@@ -386,25 +395,16 @@ adminRouter.get('/settings', async (req: AuthenticatedRequest, res: Response) =>
   try {
     let settings = await prisma.globalSiteSettings.findFirst();
     if (!settings) {
-      // Create defaults
       settings = await prisma.globalSiteSettings.create({
         data: {
-          themeConfig: {
-            primaryAccent: '#00F0FF',
-            bgVoid: '#0B0E14',
-            cardSurface: '#121721',
-            successColor: '#00E676',
-            errorColor: '#FF1744',
-            warningColor: '#FFD600',
-            fontFamily: 'Inter',
-            borderRadius: '8px',
-            glassOpacity: 0.8,
-          },
-          brandingConfig: {
-            siteTitle: 'BRP Trade Router SaaS',
-            logoUrl: '/assets/logo.svg',
-            faviconUrl: '/favicon.ico',
-          },
+          themeConfig: DEFAULT_THEME_CONFIG,
+          brandingConfig: DEFAULT_BRANDING_CONFIG,
+          featureFlags: DEFAULT_FEATURE_FLAGS,
+          feeConfig: DEFAULT_FEE_CONFIG,
+          tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+          cmsContent: DEFAULT_CMS_CONTENT,
+          moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+          customCss: '',
         },
       });
     }
@@ -424,7 +424,7 @@ adminRouter.post('/settings', async (req: AuthenticatedRequest, res: Response) =
     return;
   }
 
-  const { themeConfig, brandingConfig } = req.body;
+  const { themeConfig, brandingConfig, featureFlags, feeConfig, tenantDefaults, cmsContent, moduleVisibility, customCss } = req.body;
 
   if (typeof themeConfig !== 'undefined' && (typeof themeConfig !== 'object' || Array.isArray(themeConfig) || !themeConfig)) {
     res.status(400).json({ error: 'themeConfig must be an object when supplied' });
@@ -433,6 +433,36 @@ adminRouter.post('/settings', async (req: AuthenticatedRequest, res: Response) =
 
   if (typeof brandingConfig !== 'undefined' && (typeof brandingConfig !== 'object' || Array.isArray(brandingConfig) || !brandingConfig)) {
     res.status(400).json({ error: 'brandingConfig must be an object when supplied' });
+    return;
+  }
+
+  if (typeof featureFlags !== 'undefined' && (typeof featureFlags !== 'object' || Array.isArray(featureFlags) || !featureFlags)) {
+    res.status(400).json({ error: 'featureFlags must be an object when supplied' });
+    return;
+  }
+
+  if (typeof feeConfig !== 'undefined' && (typeof feeConfig !== 'object' || Array.isArray(feeConfig) || !feeConfig)) {
+    res.status(400).json({ error: 'feeConfig must be an object when supplied' });
+    return;
+  }
+
+  if (typeof tenantDefaults !== 'undefined' && (typeof tenantDefaults !== 'object' || Array.isArray(tenantDefaults) || !tenantDefaults)) {
+    res.status(400).json({ error: 'tenantDefaults must be an object when supplied' });
+    return;
+  }
+
+  if (typeof cmsContent !== 'undefined' && (typeof cmsContent !== 'object' || Array.isArray(cmsContent) || !cmsContent)) {
+    res.status(400).json({ error: 'cmsContent must be an object when supplied' });
+    return;
+  }
+
+  if (typeof moduleVisibility !== 'undefined' && (typeof moduleVisibility !== 'object' || Array.isArray(moduleVisibility) || !moduleVisibility)) {
+    res.status(400).json({ error: 'moduleVisibility must be an object when supplied' });
+    return;
+  }
+
+  if (typeof customCss !== 'undefined' && typeof customCss !== 'string') {
+    res.status(400).json({ error: 'customCss must be a string when supplied' });
     return;
   }
 
@@ -446,27 +476,25 @@ adminRouter.post('/settings', async (req: AuthenticatedRequest, res: Response) =
         data: {
           themeConfig: themeConfig || undefined,
           brandingConfig: brandingConfig || undefined,
+          featureFlags: featureFlags || undefined,
+          feeConfig: feeConfig || undefined,
+          tenantDefaults: tenantDefaults || undefined,
+          cmsContent: cmsContent || undefined,
+          moduleVisibility: moduleVisibility || undefined,
+          customCss: typeof customCss === 'string' ? customCss : undefined,
         },
       });
     } else {
       updated = await prisma.globalSiteSettings.create({
         data: {
-          themeConfig: themeConfig || {
-            primaryAccent: '#00F0FF',
-            bgVoid: '#0B0E14',
-            cardSurface: '#121721',
-            successColor: '#00E676',
-            errorColor: '#FF1744',
-            warningColor: '#FFD600',
-            fontFamily: 'Inter',
-            borderRadius: '8px',
-            glassOpacity: 0.8,
-          },
-          brandingConfig: brandingConfig || {
-            siteTitle: 'BRP Trade Router SaaS',
-            logoUrl: '/assets/logo.svg',
-            faviconUrl: '/favicon.ico',
-          },
+          themeConfig: themeConfig || DEFAULT_THEME_CONFIG,
+          brandingConfig: brandingConfig || DEFAULT_BRANDING_CONFIG,
+          featureFlags: featureFlags || DEFAULT_FEATURE_FLAGS,
+          feeConfig: feeConfig || DEFAULT_FEE_CONFIG,
+          tenantDefaults: tenantDefaults || DEFAULT_TENANT_DEFAULTS,
+          cmsContent: cmsContent || DEFAULT_CMS_CONTENT,
+          moduleVisibility: moduleVisibility || DEFAULT_MODULE_VISIBILITY,
+          customCss: typeof customCss === 'string' ? customCss : '',
         },
       });
     }

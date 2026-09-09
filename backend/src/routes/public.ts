@@ -6,7 +6,15 @@
 
 import { Router, Request, Response } from 'express';
 import prisma from '../db';
-import { DEFAULT_BRANDING_CONFIG, DEFAULT_THEME_CONFIG } from '@workspace/shared';
+import {
+  DEFAULT_BRANDING_CONFIG,
+  DEFAULT_THEME_CONFIG,
+  DEFAULT_FEATURE_FLAGS,
+  DEFAULT_FEE_CONFIG,
+  DEFAULT_TENANT_DEFAULTS,
+  DEFAULT_CMS_CONTENT,
+  DEFAULT_MODULE_VISIBILITY,
+} from '@workspace/shared';
 
 export const publicRouter = Router();
 
@@ -23,6 +31,12 @@ publicRouter.get('/settings', async (_req: Request, res: Response) => {
         data: {
           themeConfig: DEFAULT_THEME_CONFIG,
           brandingConfig: DEFAULT_BRANDING_CONFIG,
+          featureFlags: DEFAULT_FEATURE_FLAGS,
+          feeConfig: DEFAULT_FEE_CONFIG,
+          tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+          cmsContent: DEFAULT_CMS_CONTENT,
+          moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+          customCss: '',
         },
       });
     }
@@ -33,6 +47,12 @@ publicRouter.get('/settings', async (_req: Request, res: Response) => {
     res.status(200).json({
       themeConfig: DEFAULT_THEME_CONFIG,
       brandingConfig: DEFAULT_BRANDING_CONFIG,
+      featureFlags: DEFAULT_FEATURE_FLAGS,
+      feeConfig: DEFAULT_FEE_CONFIG,
+      tenantDefaults: DEFAULT_TENANT_DEFAULTS,
+      cmsContent: DEFAULT_CMS_CONTENT,
+      moduleVisibility: DEFAULT_MODULE_VISIBILITY,
+      customCss: '',
     });
   }
 });
