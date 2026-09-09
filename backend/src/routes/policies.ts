@@ -15,6 +15,24 @@ import { validateLicense } from '../middleware/license';
 import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
+function parseFiniteIntLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function parseFiniteFloatLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 export const policiesRouter = Router();
 
 // Apply licensing checks and authentication
@@ -68,6 +86,13 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
   }
 
   try {
+    const normalizedAddedLatencyOpenMs = parseFiniteIntLike(addedLatencyOpenMs, 0);
+    const normalizedAddedLatencyCloseMs = parseFiniteIntLike(addedLatencyCloseMs, 0);
+    const normalizedRequoteDelayMs = parseFiniteIntLike(requoteDelayMs, 0);
+    const normalizedMaxDeviationPoints = parseFiniteIntLike(maxDeviationPoints, 20);
+    const normalizedGoodPriceWindowPoints = parseFiniteIntLike(goodPriceWindowPoints, 5);
+    const normalizedBadPriceWindowPoints = parseFiniteIntLike(badPriceWindowPoints, 15);
+
     // If setting active, deactivate existing ones first to ensure only 1 active policy
     if (isActive !== false) {
       await prisma.executionPolicy.updateMany({
@@ -80,12 +105,12 @@ policiesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenticate
       data: {
         tenantId,
         policyName: policyName.trim(),
-        addedLatencyOpenMs: addedLatencyOpenMs ? parseInt(addedLatencyOpenMs) : 0,
-        addedLatencyCloseMs: addedLatencyCloseMs ? parseInt(addedLatencyCloseMs) : 0,
-        requoteDelayMs: requoteDelayMs ? parseInt(requoteDelayMs) : 0,
-        maxDeviationPoints: maxDeviationPoints ? parseInt(maxDeviationPoints) : 20,
-        goodPriceWindowPoints: goodPriceWindowPoints ? parseInt(goodPriceWindowPoints) : 5,
-        badPriceWindowPoints: badPriceWindowPoints ? parseInt(badPriceWindowPoints) : 15,
+        addedLatencyOpenMs: normalizedAddedLatencyOpenMs,
+        addedLatencyCloseMs: normalizedAddedLatencyCloseMs,
+        requoteDelayMs: normalizedRequoteDelayMs,
+        maxDeviationPoints: normalizedMaxDeviationPoints,
+        goodPriceWindowPoints: normalizedGoodPriceWindowPoints,
+        badPriceWindowPoints: normalizedBadPriceWindowPoints,
         isActive: isActive !== false,
       },
     });
@@ -153,16 +178,23 @@ policiesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authentica
       });
     }
 
+    const normalizedAddedLatencyOpenMs = typeof addedLatencyOpenMs === 'number' || typeof addedLatencyOpenMs === 'string' ? parseFiniteIntLike(addedLatencyOpenMs, Number.NEGATIVE_INFINITY) : undefined;
+    const normalizedAddedLatencyCloseMs = typeof addedLatencyCloseMs === 'number' || typeof addedLatencyCloseMs === 'string' ? parseFiniteIntLike(addedLatencyCloseMs, Number.NEGATIVE_INFINITY) : undefined;
+    const normalizedRequoteDelayMs = typeof requoteDelayMs === 'number' || typeof requoteDelayMs === 'string' ? parseFiniteIntLike(requoteDelayMs, Number.NEGATIVE_INFINITY) : undefined;
+    const normalizedMaxDeviationPoints = typeof maxDeviationPoints === 'number' || typeof maxDeviationPoints === 'string' ? parseFiniteIntLike(maxDeviationPoints, Number.NEGATIVE_INFINITY) : undefined;
+    const normalizedGoodPriceWindowPoints = typeof goodPriceWindowPoints === 'number' || typeof goodPriceWindowPoints === 'string' ? parseFiniteIntLike(goodPriceWindowPoints, Number.NEGATIVE_INFINITY) : undefined;
+    const normalizedBadPriceWindowPoints = typeof badPriceWindowPoints === 'number' || typeof badPriceWindowPoints === 'string' ? parseFiniteIntLike(badPriceWindowPoints, Number.NEGATIVE_INFINITY) : undefined;
+
     const updated = await prisma.executionPolicy.update({
       where: { id },
       data: {
         policyName: typeof policyName === 'string' && policyName.trim() ? policyName.trim() : undefined,
-        addedLatencyOpenMs: typeof addedLatencyOpenMs === 'string' && addedLatencyOpenMs.trim() ? parseInt(addedLatencyOpenMs) : undefined,
-        addedLatencyCloseMs: typeof addedLatencyCloseMs === 'string' && addedLatencyCloseMs.trim() ? parseInt(addedLatencyCloseMs) : undefined,
-        requoteDelayMs: typeof requoteDelayMs === 'string' && requoteDelayMs.trim() ? parseInt(requoteDelayMs) : undefined,
-        maxDeviationPoints: typeof maxDeviationPoints === 'string' && maxDeviationPoints.trim() ? parseInt(maxDeviationPoints) : undefined,
-        goodPriceWindowPoints: typeof goodPriceWindowPoints === 'string' && goodPriceWindowPoints.trim() ? parseInt(goodPriceWindowPoints) : undefined,
-        badPriceWindowPoints: typeof badPriceWindowPoints === 'string' && badPriceWindowPoints.trim() ? parseInt(badPriceWindowPoints) : undefined,
+        addedLatencyOpenMs: normalizedAddedLatencyOpenMs === Number.NEGATIVE_INFINITY ? undefined : normalizedAddedLatencyOpenMs,
+        addedLatencyCloseMs: normalizedAddedLatencyCloseMs === Number.NEGATIVE_INFINITY ? undefined : normalizedAddedLatencyCloseMs,
+        requoteDelayMs: normalizedRequoteDelayMs === Number.NEGATIVE_INFINITY ? undefined : normalizedRequoteDelayMs,
+        maxDeviationPoints: normalizedMaxDeviationPoints === Number.NEGATIVE_INFINITY ? undefined : normalizedMaxDeviationPoints,
+        goodPriceWindowPoints: normalizedGoodPriceWindowPoints === Number.NEGATIVE_INFINITY ? undefined : normalizedGoodPriceWindowPoints,
+        badPriceWindowPoints: normalizedBadPriceWindowPoints === Number.NEGATIVE_INFINITY ? undefined : normalizedBadPriceWindowPoints,
         isActive: typeof isActive === 'boolean' ? isActive : undefined,
       },
     });

@@ -15,6 +15,24 @@ import { validateLicense } from '../middleware/license';
 import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import prisma from '../db';
 
+function parseFiniteIntLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function parseFiniteFloatLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 export const rulesRouter = Router();
 
 // Apply licensing checks and authentication to all rule endpoints
@@ -77,6 +95,12 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
   }
 
   try {
+    const normalizedExecutionMode = typeof executionMode === 'string' && ['COPIER', 'DEALER_ONLY'].includes(executionMode.trim().toUpperCase()) ? executionMode.trim().toUpperCase() as 'COPIER' | 'DEALER_ONLY' : 'COPIER' as 'COPIER' | 'DEALER_ONLY';
+    const normalizedPriority = parseFiniteIntLike(priority, 1);
+    const normalizedMinLot = parseFiniteFloatLike(minLot, 0.01);
+    const normalizedMaxLot = parseFiniteFloatLike(maxLot, 100.0);
+    const normalizedForceMt5Flags = parseFiniteIntLike(forceMt5Flags, 0);
+
     // Confirm destination belongs to the same tenant
     const dest = await prisma.lpDestination.findFirst({
       where: { id: destinationId.trim(), tenantId },
@@ -93,12 +117,12 @@ rulesRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: AuthenticatedRe
         destinationId: destinationId.trim(),
         ruleName: ruleName.trim(),
         sourceMt5Group: sourceMt5Group.trim(),
-        executionMode: executionMode || 'COPIER',
-        priority: priority ? parseInt(priority) : 1,
+        executionMode: normalizedExecutionMode,
+        priority: normalizedPriority,
         isEnabled: isEnabled !== false,
-        minLot: minLot ? parseFloat(minLot) : 0.01,
-        maxLot: maxLot ? parseFloat(maxLot) : 100.0,
-        forceMt5Flags: forceMt5Flags ? parseInt(forceMt5Flags) : 0,
+        minLot: normalizedMinLot,
+        maxLot: normalizedMaxLot,
+        forceMt5Flags: normalizedForceMt5Flags,
       },
     });
 
@@ -169,7 +193,11 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
       }
     }
 
-    const executionModeValue = executionMode === 'COPIER' || executionMode === 'DEALER_ONLY' ? executionMode : undefined;
+    const executionModeValue = typeof executionMode === 'string' && ['COPIER', 'DEALER_ONLY'].includes(executionMode.trim().toUpperCase()) ? executionMode.trim().toUpperCase() as 'COPIER' | 'DEALER_ONLY' : undefined;
+    const normalizedPriority = typeof priority === 'number' || typeof priority === 'string' ? parseFiniteIntLike(priority, Number.NaN) : undefined;
+    const normalizedMinLot = typeof minLot === 'number' || typeof minLot === 'string' ? parseFiniteFloatLike(minLot, Number.NaN) : undefined;
+    const normalizedMaxLot = typeof maxLot === 'number' || typeof maxLot === 'string' ? parseFiniteFloatLike(maxLot, Number.NaN) : undefined;
+    const normalizedForceMt5Flags = typeof forceMt5Flags === 'number' || typeof forceMt5Flags === 'string' ? parseFiniteIntLike(forceMt5Flags, Number.NaN) : undefined;
 
     const updated = await prisma.routingRule.update({
       where: { id },
@@ -178,11 +206,11 @@ rulesRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authenticated
         ruleName: typeof ruleName === 'string' && ruleName.trim() ? ruleName.trim() : undefined,
         sourceMt5Group: typeof sourceMt5Group === 'string' && sourceMt5Group.trim() ? sourceMt5Group.trim() : undefined,
         executionMode: executionModeValue,
-        priority: typeof priority === 'string' && priority.trim() ? parseInt(priority) : undefined,
+        priority: Number.isFinite(normalizedPriority) ? normalizedPriority : undefined,
         isEnabled: typeof isEnabled === 'boolean' ? isEnabled : undefined,
-        minLot: typeof minLot === 'string' && minLot.trim() ? parseFloat(minLot) : undefined,
-        maxLot: typeof maxLot === 'string' && maxLot.trim() ? parseFloat(maxLot) : undefined,
-        forceMt5Flags: typeof forceMt5Flags === 'string' && forceMt5Flags.trim() ? parseInt(forceMt5Flags) : undefined,
+        minLot: Number.isFinite(normalizedMinLot) ? normalizedMinLot : undefined,
+        maxLot: Number.isFinite(normalizedMaxLot) ? normalizedMaxLot : undefined,
+        forceMt5Flags: Number.isFinite(normalizedForceMt5Flags) ? normalizedForceMt5Flags : undefined,
       },
     });
 

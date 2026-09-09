@@ -17,6 +17,24 @@ import { requireTenantContext, getTenantId } from '../middleware/tenant';
 import { encrypt } from '../utils/crypto';
 import prisma from '../db';
 
+function parseFiniteIntLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function parseFiniteFloatLike(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 export const destinationsRouter = Router();
 
 // Apply licensing and tenant role validations to all endpoints
@@ -99,21 +117,27 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
 
     // 2. Encrypt Password & write
     const encryptedPassword = encrypt(password.trim());
+    const portValue = parseFiniteIntLike(port, 0);
+    const deviationPtValue = parseFiniteIntLike(deviationPt, 10);
+    const magicIdValue = parseFiniteIntLike(magicId, 999999);
+    const lotsDivisorValue = parseFiniteFloatLike(lotsDivisor, 1.0);
+    const destDealerWaitMsValue = parseFiniteIntLike(destDealerWaitMs, 0);
+
     const destination = await prisma.lpDestination.create({
       data: {
         tenantId,
         brokerName: brokerName.trim(),
         accountLabel: accountLabel.trim(),
         serverIp: serverIp.trim(),
-        port: parseInt(port),
+        port: portValue,
         loginId: loginId.trim(),
         encryptedPassword,
         accountMode: accountMode || 'HEDGING',
         enableForwarding: enableForwarding !== false,
-        deviationPt: deviationPt ? parseInt(deviationPt) : 10,
-        magicId: magicId ? parseInt(magicId) : 999999,
-        lotsDivisor: lotsDivisor ? parseFloat(lotsDivisor) : 1.0,
-        destDealerWaitMs: destDealerWaitMs ? parseInt(destDealerWaitMs) : 0,
+        deviationPt: deviationPtValue,
+        magicId: magicIdValue,
+        lotsDivisor: lotsDivisorValue,
+        destDealerWaitMs: destDealerWaitMsValue,
       },
     });
 
@@ -183,15 +207,21 @@ destinationsRouter.put('/:id', requireRole(['TENANT_ADMIN']), async (req: Authen
       brokerName: typeof brokerName === 'string' && brokerName.trim() ? brokerName.trim() : undefined,
       accountLabel: typeof accountLabel === 'string' && accountLabel.trim() ? accountLabel.trim() : undefined,
       serverIp: typeof serverIp === 'string' && serverIp.trim() ? serverIp.trim() : undefined,
-      port: typeof port === 'string' && port.trim() ? parseInt(port) : undefined,
+      port: typeof port === 'number' || typeof port === 'string' ? parseFiniteIntLike(port, Number.NaN) : undefined,
       loginId: typeof loginId === 'string' && loginId.trim() ? loginId.trim() : undefined,
       accountMode: typeof accountMode === 'string' && accountMode.trim() ? accountMode.trim() : undefined,
       enableForwarding: typeof enableForwarding === 'boolean' ? enableForwarding : undefined,
-      deviationPt: typeof deviationPt === 'string' && deviationPt.trim() ? parseInt(deviationPt) : undefined,
-      magicId: typeof magicId === 'string' && magicId.trim() ? parseInt(magicId) : undefined,
-      lotsDivisor: typeof lotsDivisor === 'string' && lotsDivisor.trim() ? parseFloat(lotsDivisor) : undefined,
-      destDealerWaitMs: typeof destDealerWaitMs === 'string' && destDealerWaitMs.trim() ? parseInt(destDealerWaitMs) : undefined,
+      deviationPt: typeof deviationPt === 'number' || typeof deviationPt === 'string' ? parseFiniteIntLike(deviationPt, Number.NaN) : undefined,
+      magicId: typeof magicId === 'number' || typeof magicId === 'string' ? parseFiniteIntLike(magicId, Number.NaN) : undefined,
+      lotsDivisor: typeof lotsDivisor === 'number' || typeof lotsDivisor === 'string' ? parseFiniteFloatLike(lotsDivisor, Number.NaN) : undefined,
+      destDealerWaitMs: typeof destDealerWaitMs === 'number' || typeof destDealerWaitMs === 'string' ? parseFiniteIntLike(destDealerWaitMs, Number.NaN) : undefined,
     };
+
+    if (!Number.isFinite(data.port)) data.port = undefined;
+    if (!Number.isFinite(data.deviationPt)) data.deviationPt = undefined;
+    if (!Number.isFinite(data.magicId)) data.magicId = undefined;
+    if (!Number.isFinite(data.lotsDivisor)) data.lotsDivisor = undefined;
+    if (!Number.isFinite(data.destDealerWaitMs)) data.destDealerWaitMs = undefined;
 
     if (typeof password === 'string' && password.trim()) {
       data.encryptedPassword = encrypt(password.trim());
