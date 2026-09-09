@@ -23,10 +23,16 @@ test('shared math decimal and markup utilities honor expected precision', () => 
 });
 
 test('sandbox adapter mode remains explicit and disconnected by default', async () => {
-  const { createSandboxTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
-  const adapter = createSandboxTradingDestinationAdapter();
-  assert.equal(adapter.mode, 'SANDBOX');
-  assert.equal(adapter.liveEnabled, false);
-  const health = await adapter.healthCheck();
+  const { createSandboxTradingDestinationAdapter, createUnavailableTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
+  const sandbox = createSandboxTradingDestinationAdapter();
+  const unavailable = createUnavailableTradingDestinationAdapter();
+
+  assert.equal(sandbox.mode, 'SANDBOX');
+  assert.equal(sandbox.liveEnabled, false);
+  const health = await sandbox.healthCheck();
   assert.equal(health.status, 'OFFLINE');
+
+  assert.equal(unavailable.mode, 'SANDBOX');
+  assert.equal(unavailable.liveEnabled, false);
+  await assert.rejects(() => unavailable.connect(), /No live trading destination adapter is connected/);
 });
