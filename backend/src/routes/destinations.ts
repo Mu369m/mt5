@@ -19,8 +19,8 @@ import prisma from '../db';
 
 function parseFiniteIntLike(value: unknown, fallback: number): number {
   if (typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number.parseInt(value.trim(), 10);
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
     if (Number.isFinite(parsed)) return parsed;
   }
   return fallback;
@@ -91,7 +91,8 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
     destDealerWaitMs,
   } = req.body;
 
-  if (typeof brokerName !== 'string' || !brokerName.trim() || typeof accountLabel !== 'string' || !accountLabel.trim() || typeof serverIp !== 'string' || !serverIp.trim() || typeof port !== 'string' || !port.trim() || typeof loginId !== 'string' || !loginId.trim() || typeof password !== 'string' || !password.trim()) {
+  const portValue = parseFiniteIntLike(port, Number.NaN);
+  if (typeof brokerName !== 'string' || !brokerName.trim() || typeof accountLabel !== 'string' || !accountLabel.trim() || typeof serverIp !== 'string' || !serverIp.trim() || !Number.isInteger(portValue) || portValue < 1 || portValue > 65535 || typeof loginId !== 'string' || !loginId.trim() || typeof password !== 'string' || !password.trim()) {
     res.status(400).json({ error: 'Missing mandatory account connection fields' });
     return;
   }
@@ -117,7 +118,6 @@ destinationsRouter.post('/', requireRole(['TENANT_ADMIN']), async (req: Authenti
 
     // 2. Encrypt Password & write
     const encryptedPassword = encrypt(password.trim());
-    const portValue = parseFiniteIntLike(port, 0);
     const deviationPtValue = parseFiniteIntLike(deviationPt, 10);
     const magicIdValue = parseFiniteIntLike(magicId, 999999);
     const lotsDivisorValue = parseFiniteFloatLike(lotsDivisor, 1.0);
