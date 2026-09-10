@@ -56,6 +56,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       const token = localStorage.getItem('brp_token');
       if (!token) return;
 
+      // Preview sessions have no backend JWT and must not call protected APIs.
+      if (token === 'frontend-dev-direct-login' || token === 'frontend-demo-preview') {
+        return;
+      }
+
       // Tenant-scoped telemetry (skip for Super Admin unless impersonating)
       const rawUser = localStorage.getItem('brp_user');
       const parsedUser = rawUser ? JSON.parse(rawUser) : null;
