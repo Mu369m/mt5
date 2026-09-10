@@ -150,6 +150,52 @@ export class SandboxTradingDestinationAdapter implements TradingDestinationAdapt
 }
 
 /**
+ * Explicit live adapter scaffold. It is intentionally unimplemented and must
+ * be supplied by a real MT4/MT5 connector, but it advertises its mode clearly
+ * and is the only adapter that can satisfy a `LIVE` routing branch.
+ */
+export class LiveTradingDestinationAdapter implements TradingDestinationAdapter {
+  readonly mode: TradingDestinationMode = 'LIVE';
+  readonly liveEnabled = false;
+
+  async connect(): Promise<void> {
+    return;
+  }
+
+  async disconnect(): Promise<void> {
+    return;
+  }
+
+  async healthCheck(): Promise<{ status: 'ONLINE' | 'OFFLINE' | 'DEGRADED'; latencyMs: number; }> {
+    return { status: 'DEGRADED', latencyMs: 0 };
+  }
+
+  async getAccountMode(): Promise<'HEDGING' | 'NETTING' | 'UNKNOWN'> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+
+  async getSymbolInfo(symbol: string): Promise<{ symbol: string; digits: number; pipSize?: number; }> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+
+  async sendMarketOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+
+  async sendLimitOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+
+  async closeOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+
+  async modifyOrder(command: ExecutionCommand): Promise<ExecutionResponse> {
+    throw new Error('Live trading destination adapter requires a concrete MT4/MT5 connector implementation');
+  }
+}
+
+/**
  * Convenience factory for a sandbox-safe adapter that refuses to masquerade as a
  * live bridge permission.
  */
@@ -221,6 +267,10 @@ export class InMemoryTradingDestinationRegistry {
 
 export function createSandboxTradingDestinationAdapter(): TradingDestinationAdapter {
   return new SandboxTradingDestinationAdapter();
+}
+
+export function createLiveTradingDestinationAdapter(): TradingDestinationAdapter {
+  return new LiveTradingDestinationAdapter();
 }
 
 export function createUnavailableTradingDestinationAdapter(): TradingDestinationAdapter {

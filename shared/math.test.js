@@ -46,17 +46,20 @@ test('execution router refuses to convert a non-live destination adapter into a 
 });
 
 test('registry keeps a visible, safe live-adapter scan path and rejects implicit sandbox discovery', () => {
-  const { createTradingDestinationRegistry, createSandboxTradingDestinationAdapter, createUnavailableTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
+  const { createTradingDestinationRegistry, createSandboxTradingDestinationAdapter, createUnavailableTradingDestinationAdapter, createLiveTradingDestinationAdapter } = require('../mt-bridge/dist/adapters.js');
   const registry = createTradingDestinationRegistry();
   const sandbox = createSandboxTradingDestinationAdapter();
   const unavailable = createUnavailableTradingDestinationAdapter();
+  const live = createLiveTradingDestinationAdapter();
 
   registry.register(sandbox, 'SANDBOX');
   registry.register(unavailable, 'UNAVAILABLE');
+  registry.register(live, 'LIVE');
 
   assert.equal(registry.hasLiveAdapter(), false);
   assert.equal(registry.getLiveAdapter(), undefined);
   assert.equal(registry.get('SANDBOX')?.mode, 'SANDBOX');
+  assert.equal(registry.get('LIVE')?.liveEnabled, false);
 });
 
 test('netting engine rejects invalid tenant context, symbol and direction before mutating exposure', () => {
