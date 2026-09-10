@@ -123,7 +123,8 @@ export const Dashboard: React.FC = () => {
 
     // Establish WebSocket Connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const token = localStorage.getItem('brp_token');
+    const wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token ?? '')}`;
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {

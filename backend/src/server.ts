@@ -29,7 +29,7 @@ import { symbolsRouter } from './routes/symbols';
 import { policiesRouter } from './routes/policies';
 import { sandboxRouter } from './routes/sandbox';
 import { copierRouter } from './routes/copier';
-import { authenticateToken } from './middleware/auth';
+import { authenticateToken, verifyWebSocketToken } from './middleware/auth';
 import prisma from './db';
 import { registerTelemetryBroadcaster } from '../../mt-bridge/src/engine';
 import './jobs';
@@ -77,22 +77,30 @@ const server = http.createServer(app);
 
 // Accept the dashboard and terminal endpoint paths on the same Railway listener.
 const wss = new WebSocketServer({ noServer: true });
-const connectedClients = new Set<WebSocket>();
+const connectedClients = new Map<WebSocket, { role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_VIEWER'; tenantId: string | null }>();
 
-server.on('upgrade', (request, socket, head) => {
+server.on('upgrade', async (request, socket, head) => {
   const pathname = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`).pathname;
   if (!['/ws', '/ws/master', '/ws/slave'].includes(pathname)) {
     socket.destroy();
     return;
   }
 
+  const token = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`).searchParams.get('token');
+  const user = token ? await verifyWebSocketToken(token) : null;
+  if (!user) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
   wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
+    wss.emit('connection', ws, request, user);
   });
 });
 
-wss.on('connection', (ws: WebSocket) => {
-  connectedClients.add(ws);
+wss.on('connection', (ws: WebSocket, _request: http.IncomingMessage, user: { role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_VIEWER'; tenantId: string | null }) => {
+  connectedClients.set(ws, user);
   
   // Send welcome diagnostic ping
   ws.send(JSON.stringify({ event: 'CONNECTED', message: 'Institutional Telemetry Link Established' }));
@@ -110,7 +118,10 @@ wss.on('connection', (ws: WebSocket) => {
  */
 export function broadcastTelemetry(eventName: string, data: any): void {
   const payload = JSON.stringify({ event: eventName, data, timestamp: new Date() });
-  for (const client of connectedClients) {
+  const eventTenantId = typeof data?.tenantId === 'string' ? data.tenantId : null;
+  for (const [client, user] of connectedClients) {
+    const canReceive = user.role === 'SUPER_ADMIN' || (eventTenantId && user.tenantId === eventTenantId);
+    if (!canReceive) continue;
     if (client.readyState === WebSocket.OPEN) {
       client.send(payload);
     }

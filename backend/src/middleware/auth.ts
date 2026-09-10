@@ -25,6 +25,35 @@ export interface AuthenticatedRequest extends Request {
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
 
 /**
+ * Verifies a dashboard WebSocket token and refreshes its role/tenant state from
+ * the database before allowing a socket to receive telemetry.
+ */
+export async function verifyWebSocketToken(token: string): Promise<AuthenticatedRequest['user'] | null> {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
+    if (!decoded.id) return null;
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.isActive || (user.tenant && user.tenant.status !== 'ACTIVE')) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Middleware that authenticates incoming requests using Bearer JWT or x-api-key.
  */
 /**

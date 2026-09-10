@@ -210,6 +210,7 @@ export async function executeTradeRoutingPipeline(order: OrderPayload): Promise<
     if (telemetryBroadcaster) {
       telemetryBroadcaster('TRADE_EXECUTION', {
         ...orderResult,
+        tenantId: order.tenantId,
         companyName: dest.accountLabel,
         brokerName: dest.brokerName,
         sourceGroup: order.sourceGroup,
