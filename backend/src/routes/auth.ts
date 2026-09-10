@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../db';
+import { getSecuritySecret } from '../config/security';
 import {
   DEFAULT_THEME_CONFIG,
   DEFAULT_BRANDING_CONFIG,
@@ -28,7 +29,7 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 export const authRouter = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
+const JWT_SECRET = getSecuritySecret('JWT_SECRET');
 
 /**
  * Helper to generate a tenant license key
@@ -90,7 +91,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 
     // Bootstrapping as a SUPER_ADMIN
     if (superAdminCode) {
-      if (superAdminCode !== process.env.SUPER_ADMIN_KEY) {
+      if (superAdminCode !== getSecuritySecret('SUPER_ADMIN_KEY')) {
         res.status(403).json({ error: 'Invalid Super Admin setup key' });
         return;
       }

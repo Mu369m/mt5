@@ -11,6 +11,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../db';
+import { getSecuritySecret } from '../config/security';
 
 // Extend Express Request interface to include session metadata
 export interface AuthenticatedRequest extends Request {
@@ -22,7 +23,7 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
+const JWT_SECRET = getSecuritySecret('JWT_SECRET');
 
 /**
  * Verifies a dashboard WebSocket token and refreshes its role/tenant state from
@@ -70,7 +71,7 @@ export async function authenticateToken(
 
   // 1. API Key authentication (Super Admin override or tenant license key)
   if (apiKey) {
-    if (apiKey === process.env.SUPER_ADMIN_KEY) {
+    if (apiKey === getSecuritySecret('SUPER_ADMIN_KEY')) {
       req.user = {
         id: 'super-admin-api-user-uuid',
         email: 'api-admin@institutional.router',

@@ -9,9 +9,10 @@
  */
 
 import crypto from 'crypto';
+import { getSecuritySecret } from '../config/security';
 
 // The key must be exactly 32 bytes (256 bits)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '32-character-encryption-key-for-aes-256-cbc-12345';
+const ENCRYPTION_KEY = getSecuritySecret('ENCRYPTION_KEY');
 const IV_LENGTH = 16; // AES block size in bytes
 
 /**

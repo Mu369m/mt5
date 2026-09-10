@@ -13,6 +13,7 @@ import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import prisma from '../db';
+import { getSecuritySecret } from '../config/security';
 import os from 'os';
 import crypto from 'crypto';
 import {
@@ -26,7 +27,7 @@ import {
 } from '@workspace/shared';
 
 export const adminRouter = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-institutional-jwt-signing-key-value-999';
+const JWT_SECRET = getSecuritySecret('JWT_SECRET');
 
 // Apply role restriction middleware globally to these endpoints
 adminRouter.use(requireRole(['SUPER_ADMIN']));
