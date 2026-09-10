@@ -36,10 +36,29 @@ import './jobs';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const configuredOrigins = (process.env.FRONTEND_ORIGIN ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-// Enable CORS for dashboard interactions
-app.use(cors());
-app.use(express.json());
+if (process.env.NODE_ENV === 'production' && configuredOrigins.length === 0) {
+  throw new Error('FRONTEND_ORIGIN must be configured in production');
+}
+
+app.set('trust proxy', 1);
+
+// Allow the deployed dashboard origin while preserving same-origin and health probes.
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || configuredOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Origin is not allowed by the server CORS policy'));
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: '1mb' }));
 
 // 1. Unauthenticated route boundaries
 app.use('/api/auth', authRouter);
@@ -68,8 +87,14 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'HEALTHY', timestamp: new Date() });
+app.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'HEALTHY', database: 'reachable', timestamp: new Date() });
+  } catch (error) {
+    console.error('[HEALTHCHECK_FAILED]', error);
+    res.status(503).json({ status: 'UNHEALTHY', database: 'unreachable', timestamp: new Date() });
+  }
 });
 
 // Create HTTP Server
