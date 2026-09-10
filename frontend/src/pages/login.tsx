@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useLocation, Link } from 'wouter';
-import { ShieldCheck, Mail, Lock, Eye, Route } from 'lucide-react';
+import { ShieldCheck, Mail, Lock } from 'lucide-react';
 import { useTheme } from '../theme';
 
 interface LoginResponse {
@@ -24,46 +24,6 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { loadBrandingAndTheme } = useTheme();
-
-  const handleDirectLogin = async (role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_VIEWER' = 'SUPER_ADMIN', route = role === 'SUPER_ADMIN' ? '/super-admin' : '/') => {
-    localStorage.setItem('brp_token', 'frontend-dev-direct-login');
-    localStorage.setItem('brp_user', JSON.stringify({
-      email: 'dev-direct@local.preview',
-      role,
-      companyName: role === 'SUPER_ADMIN' ? 'Super Admin Workspace' : 'Demo Workspace',
-      licenseKey: 'DEMO-PREVIEW',
-      tenantId: role === 'SUPER_ADMIN' ? null : 'dev-tenant-1',
-    }));
-
-    await loadBrandingAndTheme();
-    setLocation(route);
-  };
-
-  const devRoutes = [
-    { label: 'DASHBOARD', path: '/', role: 'TENANT_ADMIN' as const },
-    { label: 'DESTINATIONS', path: '/destinations', role: 'TENANT_ADMIN' as const },
-    { label: 'RULES', path: '/rules', role: 'TENANT_ADMIN' as const },
-    { label: 'SYMBOLS', path: '/symbols', role: 'TENANT_ADMIN' as const },
-    { label: 'POLICIES', path: '/policies', role: 'TENANT_ADMIN' as const },
-    { label: 'COPIER', path: '/copier', role: 'TENANT_ADMIN' as const },
-    { label: 'TENANT ADMIN', path: '/tenant-admin', role: 'TENANT_ADMIN' as const },
-    { label: 'SUPER ADMIN', path: '/super-admin', role: 'SUPER_ADMIN' as const },
-  ];
-
-  const openDevRoute = async (route: string, role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_VIEWER') => {
-    await handleDirectLogin(role, route);
-  };
-
-  const handleDemoPreview = () => {
-    localStorage.setItem('brp_token', 'frontend-demo-preview');
-    localStorage.setItem('brp_user', JSON.stringify({
-      email: 'demo@local.preview',
-      role: 'TENANT_ADMIN',
-      companyName: 'Demo Workspace',
-      licenseKey: 'DEMO-PREVIEW',
-    }));
-    setLocation('/');
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,43 +137,6 @@ export const Login: React.FC = () => {
             {loading ? 'Decrypting Session...' : 'Authenticate Token'}
           </button>
         </form>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {devRoutes.map((item) => (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => openDevRoute(item.path, item.role)}
-              className="flex items-center justify-center gap-2 rounded-custom border border-white/10 py-2 px-3 text-[10px] font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
-            >
-              <Eye className="h-3.5 w-3.5" /> {item.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => handleDirectLogin('SUPER_ADMIN', '/super-admin')}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-custom border border-accent-cyan/70 py-2.5 text-xs font-mono font-bold tracking-wider text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-[#0B0E14]"
-        >
-          <Eye className="h-4 w-4" /> DIRECT LOGIN — SUPER ADMIN
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleDirectLogin('TENANT_ADMIN', '/')}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
-        >
-          <Eye className="h-4 w-4" /> DIRECT LOGIN — TENANT ADMIN
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDemoPreview}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-custom border border-white/10 py-2.5 text-xs font-mono font-bold tracking-wider text-slate-300 transition-colors hover:border-accent-cyan hover:text-accent-cyan"
-        >
-          <Eye className="h-4 w-4" /> VIEW DEMO WITHOUT LOGIN
-        </button>
 
         <div className="mt-8 text-center text-xs text-slate-400 border-t border-white/5 pt-4">
           Need to deploy a new tenant?{' '}
