@@ -27,7 +27,7 @@ import {
   DEFAULT_TENANT_DEFAULTS,
   DEFAULT_CMS_CONTENT,
   DEFAULT_MODULE_VISIBILITY,
-} from '@workspace/shared';
+} from '@workspace/shared/constants';
 
 interface Tenant {
   id: string;
